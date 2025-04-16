@@ -1,21 +1,16 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft } from "lucide-react"
 
 export function BackButton() {
   const router = useRouter()
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="flex items-center gap-1 hover:bg-spotify-purple/10"
-      onClick={() => router.back()}
-    >
-      <ArrowLeft className="w-4 h-4" />
-      <span>Back</span>
+    <Button variant="ghost" size="sm" className="mb-4" onClick={() => router.back()}>
+      <ChevronLeft className="mr-1 h-4 w-4" />
+      Back
     </Button>
   )
 }

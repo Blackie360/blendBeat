@@ -1,7 +1,6 @@
 import type { NextAuthOptions } from "next-auth"
 import SpotifyProvider from "next-auth/providers/spotify"
 import { sql } from "@neondatabase/serverless"
-import { getServerSession } from "next-auth/next"
 
 const scopes = [
   "user-read-email",
@@ -99,10 +98,15 @@ export const authOptions: NextAuthOptions = {
 }
 
 // Export the auth function
-export const auth = async () => await getServerSession(authOptions)
+export const auth = async () => {
+  const session = await getServerSession(authOptions)
+  return session
+}
 
 // Export the getSession function
 export const getSession = async () => {
   const session = await getServerSession(authOptions)
   return session
 }
+
+import { getServerSession } from "next-auth/next"

@@ -6,6 +6,10 @@ import { BackButton } from "@/components/navigation/back-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDistanceToNow } from "date-fns"
+import { BlendActions } from "@/components/blend/blend-actions"
+import { TrackSearch } from "@/components/blend/track-search"
+import { BlendTracks } from "@/components/blend/blend-tracks"
+import { getPlaylistDetails } from "@/lib/spotify-service"
 
 export default async function BlendDetailPage({
   params,
@@ -30,6 +34,20 @@ export default async function BlendDetailPage({
   }
 
   const participants = await getBlendParticipants(blendId)
+
+  // Check if current user is a participant
+  const isParticipant = participants.some((p) => p.id === session.user.id)
+
+  // Get playlist details if available
+  let playlistTracks = []
+  if (blend.playlist_id) {
+    try {
+      const playlistDetails = await getPlaylistDetails(blend.playlist_id)
+      playlistTracks = playlistDetails.tracks?.items || []
+    } catch (error) {
+      console.error("Error fetching playlist details:", error)
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -76,6 +94,12 @@ export default async function BlendDetailPage({
                 </>
               )}
             </div>
+
+            <BlendActions
+              blend={blend}
+              isParticipant={isParticipant}
+              isCreator={participants[0]?.id === session.user.id}
+            />
           </CardContent>
         </Card>
 
@@ -107,6 +131,30 @@ export default async function BlendDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {isParticipant && blend.playlist_id && (
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Add Tracks to Blend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TrackSearch blendId={blendId} />
+            </CardContent>
+          </Card>
+
+          <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Blend Tracks</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BlendTracks tracks={playlistTracks} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
