@@ -9,15 +9,19 @@ import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/components/ui/use-toast"
 import { Music, Shuffle, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function BlendPage() {
   const [participantCount, setParticipantCount] = useState(3)
   const [playlistName, setPlaylistName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
-  const handleCreateBlend = async () => {
+  const handleCreateBlend = async (e) => {
+    e.preventDefault()
+
     if (!playlistName) {
       toast({
         title: "Please enter a playlist name",
@@ -27,6 +31,7 @@ export default function BlendPage() {
     }
 
     setIsCreating(true)
+    setIsSubmitting(true)
 
     try {
       const response = await fetch("/api/blends", {
@@ -56,14 +61,29 @@ export default function BlendPage() {
       // Redirect to the new playlist
       router.push(`/playlist/${result.playlistId}`)
     } catch (error) {
+      console.error("Error creating blend:", error)
       toast({
         title: "Failed to create blend playlist",
-        description: error.message,
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
-    } finally {
       setIsCreating(false)
+    } finally {
+      setIsSubmitting(false)
     }
+  }
+
+  if (isSubmitting && isCreating) {
+    return (
+      <div className="container max-w-4xl py-6 md:py-10 px-4 sm:px-6">
+        <Card className="animated-border">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <LoadingSpinner />
+            <p className="mt-4 text-center">Creating your blend playlist...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -71,77 +91,80 @@ export default function BlendPage() {
       <h1 className="mb-6 md:mb-8 text-3xl md:text-4xl font-bold text-center purple-gradient-text">Create a Blend</h1>
 
       <Card className="animated-border">
-        <CardHeader>
-          <CardTitle>New Blend Playlist</CardTitle>
-          <CardDescription>
-            Create a collaborative playlist with random participants who share similar music tastes
-          </CardDescription>
-        </CardHeader>
+        <form onSubmit={handleCreateBlend}>
+          <CardHeader>
+            <CardTitle>New Blend Playlist</CardTitle>
+            <CardDescription>
+              Create a collaborative playlist with random participants who share similar music tastes
+            </CardDescription>
+          </CardHeader>
 
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="playlist-name">Playlist Name</Label>
-            <Input
-              id="playlist-name"
-              placeholder="My Awesome Blend"
-              value={playlistName}
-              onChange={(e) => setPlaylistName(e.target.value)}
-              className="border-spotify-purple/30 focus-visible:ring-spotify-purple"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Number of Random Participants</Label>
-              <span className="text-sm font-medium text-spotify-purple-light">{participantCount}</span>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="playlist-name">Playlist Name</Label>
+              <Input
+                id="playlist-name"
+                placeholder="My Awesome Blend"
+                value={playlistName}
+                onChange={(e) => setPlaylistName(e.target.value)}
+                className="border-spotify-purple/30 focus-visible:ring-spotify-purple"
+                required
+              />
             </div>
-            <Slider
-              value={[participantCount]}
-              min={2}
-              max={10}
-              step={1}
-              onValueChange={(value) => setParticipantCount(value[0])}
-              className="[&>span]:bg-spotify-purple"
-            />
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 mt-6 sm:grid-cols-2">
-            <Card className="bg-muted/50 border-spotify-purple/20 hover-scale">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-spotify-purple-light" />
-                  <h3 className="font-medium">Random Matching</h3>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  We'll match you with random users who have similar music tastes
-                </p>
-              </CardContent>
-            </Card>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Number of Random Participants</Label>
+                <span className="text-sm font-medium text-spotify-purple-light">{participantCount}</span>
+              </div>
+              <Slider
+                value={[participantCount]}
+                min={2}
+                max={10}
+                step={1}
+                onValueChange={(value) => setParticipantCount(value[0])}
+                className="[&>span]:bg-spotify-purple"
+              />
+            </div>
 
-            <Card className="bg-muted/50 border-spotify-purple/20 hover-scale">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Shuffle className="w-5 h-5 text-spotify-purple-light" />
-                  <h3 className="font-medium">Diverse Selection</h3>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Discover new music through the diverse tastes of your blend participants
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </CardContent>
+            <div className="grid grid-cols-1 gap-4 mt-6 sm:grid-cols-2">
+              <Card className="bg-muted/50 border-spotify-purple/20 hover-scale">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-spotify-purple-light" />
+                    <h3 className="font-medium">Random Matching</h3>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    We'll match you with random users who have similar music tastes
+                  </p>
+                </CardContent>
+              </Card>
 
-        <CardFooter className="flex flex-col gap-4 sm:flex-row">
-          <Button
-            className="w-full bg-spotify-purple hover:bg-spotify-purple-dark text-white purple-glow"
-            onClick={handleCreateBlend}
-            disabled={isCreating}
-          >
-            <Music className="w-4 h-4 mr-2" />
-            {isCreating ? "Creating..." : "Create Blend"}
-          </Button>
-        </CardFooter>
+              <Card className="bg-muted/50 border-spotify-purple/20 hover-scale">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2">
+                    <Shuffle className="w-5 h-5 text-spotify-purple-light" />
+                    <h3 className="font-medium">Diverse Selection</h3>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Discover new music through the diverse tastes of your blend participants
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex flex-col gap-4 sm:flex-row">
+            <Button
+              type="submit"
+              className="w-full bg-spotify-purple hover:bg-spotify-purple-dark text-white purple-glow"
+              disabled={isCreating}
+            >
+              <Music className="w-4 h-4 mr-2" />
+              {isCreating ? "Creating..." : "Create Blend"}
+            </Button>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   )

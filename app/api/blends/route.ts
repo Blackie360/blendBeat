@@ -76,17 +76,32 @@ export async function POST(request: Request) {
       revalidatePath("/blend")
 
       return NextResponse.json({
+        success: true,
         playlistId: playlist[0].id,
         blendId: blend[0].id,
+        message: "Blend playlist created successfully",
       })
     } catch (error) {
       // Rollback the transaction on error
       await executeQuery("ROLLBACK")
-      throw error
+      console.error("Database error creating blend playlist:", error)
+      return NextResponse.json(
+        {
+          message: "Database error creating blend playlist",
+          error: error.message,
+        },
+        { status: 500 },
+      )
     }
   } catch (error) {
     console.error("Error creating blend playlist:", error)
-    return NextResponse.json({ message: "Failed to create blend playlist" }, { status: 500 })
+    return NextResponse.json(
+      {
+        message: "Failed to create blend playlist",
+        error: error.message,
+      },
+      { status: 500 },
+    )
   }
 }
 
@@ -112,9 +127,18 @@ export async function GET(request: Request) {
 
     const blends = await executeQuery(query)
 
-    return NextResponse.json(blends)
+    return NextResponse.json({
+      success: true,
+      blends,
+    })
   } catch (error) {
     console.error("Error getting active blends:", error)
-    return NextResponse.json({ message: "Failed to get active blends" }, { status: 500 })
+    return NextResponse.json(
+      {
+        message: "Failed to get active blends",
+        error: error.message,
+      },
+      { status: 500 },
+    )
   }
 }

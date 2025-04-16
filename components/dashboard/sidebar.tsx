@@ -17,26 +17,31 @@ export function Sidebar() {
       label: "Dashboard",
       icon: Home,
       href: "/dashboard",
+      active: pathname === "/dashboard",
     },
     {
       label: "Search",
       icon: Search,
       href: "/search",
+      active: pathname === "/search",
     },
     {
       label: "Your Library",
       icon: Library,
       href: "/library",
+      active: pathname === "/library",
     },
     {
       label: "Create Blend",
       icon: Shuffle,
       href: "/blend",
+      active: pathname === "/blend",
     },
     {
       label: "Profile",
       icon: User,
       href: "/profile",
+      active: pathname === "/profile",
     },
   ]
 
@@ -59,13 +64,13 @@ export function Sidebar() {
                 asChild
                 variant="ghost"
                 className={cn("w-full justify-start transition-all duration-200", {
-                  "bg-spotify-purple/20 text-spotify-purple-light": pathname === route.href,
+                  "bg-spotify-purple/20 text-spotify-purple-light": route.active,
                 })}
               >
                 <Link href={route.href}>
                   <route.icon
                     className={cn("w-5 h-5 mr-3", {
-                      "text-spotify-purple-light": pathname === route.href,
+                      "text-spotify-purple-light": route.active,
                     })}
                   />
                   {route.label}
