@@ -1,10 +1,20 @@
 import { neon } from "@neondatabase/serverless"
 
-// Initialize the SQL client with the DATABASE_URL environment variable
-const sql = neon(process.env.DATABASE_URL!)
+// Check if we're on the server side
+const isServer = typeof window === "undefined"
+
+// Initialize the SQL client only on the server side
+const sql = isServer ? neon(process.env.DATABASE_URL!) : null // This will be null on the client side
 
 export async function executeQuery(query: string, params: any[] = []) {
+  if (!isServer) {
+    throw new Error("Database queries can only be executed on the server side")
+  }
+
   try {
+    if (!sql) {
+      throw new Error("Database connection not initialized")
+    }
     const result = await sql.query(query, params)
     return result.rows
   } catch (error) {

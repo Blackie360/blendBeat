@@ -7,7 +7,28 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { getUserProfile, getUserPlaylists, getUserTopTracks, getUserTopArtists } from "@/lib/spotify-service"
-import { getBlendsByUserId } from "@/lib/db"
+import { sql } from "@neondatabase/serverless"
+
+// Create a server-side function to get blends by user ID
+async function getBlendsByUserId(userId: string) {
+  try {
+    const query = `
+      SELECT b.*, p.name as playlist_name, p.id as playlist_id, p.spotify_id,
+             COUNT(bp.id) as current_participants
+      FROM blends b
+      LEFT JOIN playlists p ON b.playlist_id = p.id
+      JOIN blend_participants bp ON b.id = bp.blend_id
+      WHERE bp.user_id = $1
+      GROUP BY b.id, p.name, p.id, p.spotify_id
+      ORDER BY b.created_at DESC
+    `
+    const result = await sql.query(query, [userId])
+    return result.rows
+  } catch (error) {
+    console.error("Error getting blends by user ID:", error)
+    return []
+  }
+}
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
