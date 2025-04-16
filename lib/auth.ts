@@ -1,7 +1,6 @@
 import NextAuth from "next-auth"
 import SpotifyProvider from "next-auth/providers/spotify"
 import type { NextAuthOptions } from "next-auth"
-import { createOrUpdateUser } from "./db-actions"
 
 const scopes = [
   "user-read-email",
@@ -31,19 +30,16 @@ export const authOptions: NextAuthOptions = {
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at
 
-        // Store Spotify ID in the token
         if (profile) {
           token.id = profile.id
           token.spotifyId = profile.id
         }
       }
 
-      // Return the previous token if the access token has not expired
       if (token.expiresAt && Date.now() < token.expiresAt * 1000) {
         return token
       }
 
-      // Access token has expired, refresh it
       try {
         return await refreshAccessToken(token)
       } catch (error) {
@@ -56,7 +52,6 @@ export const authOptions: NextAuthOptions = {
         session.accessToken = token.accessToken
         session.error = token.error
 
-        // Add Spotify ID and user ID to the session
         if (session.user) {
           session.user.id = token.id as string
           session.user.spotifyId = token.spotifyId as string
@@ -71,19 +66,12 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       try {
         if (user && account && profile) {
-          // Store user in our database
-          await createOrUpdateUser({
-            id: profile.id as string,
-            email: user.email as string,
-            name: user.name as string,
-            image: user.image as string,
-            spotify_id: profile.id as string,
-          })
+          //console.log("signIn callback", { user, account, profile })
         }
         return true
       } catch (error) {
         console.error("Error in signIn callback", error)
-        return true // Still allow sign in even if DB storage fails
+        return true
       }
     },
   },
@@ -142,6 +130,15 @@ export const auth = () => {
     return NextAuth(authOptions).auth()
   } catch (error) {
     console.error("Auth function error:", error)
+    return null
+  }
+}
+
+export async function getSession() {
+  try {
+    return await getServerSession(authOptions)
+  } catch (error) {
+    console.error("Error getting session:", error)
     return null
   }
 }

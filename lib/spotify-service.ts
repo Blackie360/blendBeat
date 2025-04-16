@@ -85,9 +85,33 @@ export async function getUserProfile(): Promise<SpotifyUser> {
 }
 
 // Playlist operations
-export async function getUserPlaylists(limit = 50): Promise<SpotifyPlaylist[]> {
-  const data = await fetchSpotifyAPI<{ items: SpotifyPlaylist[] }>(`/me/playlists?limit=${limit}`)
-  return data.items
+export async function getUserPlaylists(accessToken, limit = 50): Promise<SpotifyPlaylist[]> {
+  try {
+    const res = await fetch(`${SPOTIFY_API}/me/playlists?limit=${limit}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      console.error("Spotify API error:", errorData)
+
+      // If unauthorized, throw a specific error
+      if (res.status === 401) {
+        throw new Error("Spotify authorization expired. Please log in again.")
+      }
+
+      throw new Error(`Failed to fetch user playlists: ${res.status} ${res.statusText}`)
+    }
+
+    const data = await res.json()
+    return data.items || []
+  } catch (error) {
+    console.error("Error in getUserPlaylists:", error)
+    // Return empty array instead of throwing to prevent complete UI failure
+    return []
+  }
 }
 
 export async function getPlaylistDetails(playlistId: string): Promise<SpotifyPlaylist> {
