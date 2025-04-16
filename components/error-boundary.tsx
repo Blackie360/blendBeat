@@ -1,37 +1,46 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 
-export function ErrorBoundary({ children, fallback }) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode
+  fallback: React.ReactNode
+}
+
+export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
   const [hasError, setHasError] = useState(false)
-  const { data: session } = useSession()
+  const { status } = useSession()
 
   useEffect(() => {
-    const errorHandler = (event) => {
-      event.preventDefault()
-      setHasError(true)
-    }
-
-    window.addEventListener("error", errorHandler)
-    window.addEventListener("unhandledrejection", errorHandler)
-
-    return () => {
-      window.removeEventListener("error", errorHandler)
-      window.removeEventListener("unhandledrejection", errorHandler)
-    }
-  }, [])
-
-  // Reset error state when session changes
-  useEffect(() => {
-    if (session) {
-      setHasError(false)
-    }
-  }, [session])
+    // Reset error state when session status changes
+    setHasError(false)
+  }, [status])
 
   if (hasError) {
-    return fallback
+    return (
+      <div>
+        {fallback}
+        <button
+          className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80"
+          onClick={() => setHasError(false)}
+        >
+          Try again
+        </button>
+      </div>
+    )
   }
 
-  return children
+  return (
+    <div
+      onError={(e) => {
+        console.error("Error caught by ErrorBoundary:", e)
+        setHasError(true)
+      }}
+    >
+      {children}
+    </div>
+  )
 }

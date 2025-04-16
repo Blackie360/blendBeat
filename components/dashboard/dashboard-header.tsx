@@ -1,39 +1,40 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Plus, Shuffle } from "lucide-react"
 
-export function DashboardHeader({ user }) {
+interface User {
+  id?: string
+  name?: string | null
+  email?: string | null
+  image?: string | null
+  display_name?: string
+  followers?: { total: number }
+  images?: Array<{ url: string }>
+  product?: string
+}
+
+interface DashboardHeaderProps {
+  user: User
+}
+
+export function DashboardHeader({ user }: DashboardHeaderProps) {
+  const displayName = user.display_name || user.name || "Spotify User"
+  const imageUrl = user.images?.[0]?.url || user.image || "/vibrant-street-market.png"
+  const followerCount = user.followers?.total || 0
+  const accountType = user.product ? user.product.charAt(0).toUpperCase() + user.product.slice(1) : "Free"
+
   return (
-    <div className="flex flex-col items-start justify-between gap-4 pb-4 border-b border-spotify-purple/20 md:flex-row md:items-center">
-      <div className="flex items-center gap-4">
-        <Avatar className="w-12 h-12 md:w-16 md:h-16 border border-spotify-purple/30 purple-glow">
-          <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name} />
-          <AvatarFallback className="bg-spotify-purple/20">{user.name?.charAt(0)}</AvatarFallback>
-        </Avatar>
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold purple-gradient-text">{user.name}</h1>
-          <p className="text-sm md:text-base text-muted-foreground truncate max-w-[200px] md:max-w-none">
-            {user.email}
-          </p>
-        </div>
-      </div>
+    <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8">
+      <Avatar className="h-24 w-24">
+        <AvatarImage src={imageUrl || "/placeholder.svg"} alt={displayName} />
+        <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
+      </Avatar>
 
-      <div className="flex flex-wrap gap-2 w-full md:w-auto">
-        <Button
-          asChild
-          variant="outline"
-          className="border-spotify-purple/30 hover:bg-spotify-purple/10 flex-1 md:flex-none"
-        >
-          <Link href="/playlist/create">
-            <Plus className="w-4 h-4 mr-2" /> New Playlist
-          </Link>
-        </Button>
-        <Button asChild className="bg-spotify-purple hover:bg-spotify-purple-dark text-white flex-1 md:flex-none">
-          <Link href="/blend">
-            <Shuffle className="w-4 h-4 mr-2" /> Create Blend
-          </Link>
-        </Button>
+      <div className="text-center md:text-left">
+        <h1 className="text-3xl font-bold">{displayName}</h1>
+        <div className="text-muted-foreground mt-1">
+          {followerCount > 0 && <span className="mr-4">{followerCount} followers</span>}
+          <span>{accountType} account</span>
+        </div>
+        <p className="mt-2">Welcome to your Spotify Blend dashboard!</p>
       </div>
     </div>
   )
