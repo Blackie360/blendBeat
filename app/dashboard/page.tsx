@@ -1,21 +1,30 @@
 import { redirect } from "next/navigation"
-import { getSession } from "@/lib/get-session"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { PlaylistGrid } from "@/components/dashboard/playlist-grid"
 import { CreatePlaylistButton } from "@/components/dashboard/create-playlist-button"
 import { getUserPlaylists } from "@/lib/spotify-api"
 import { MobileNav } from "@/components/dashboard/mobile-nav"
+import { cookies } from "next/headers"
 
 export default async function DashboardPage() {
-  const session = await getSession()
+  // Check for session cookie directly
+  const cookieStore = cookies()
+  const hasSessionCookie =
+    cookieStore.has("next-auth.session-token") || cookieStore.has("__Secure-next-auth.session-token")
 
-  if (!session) {
-    // Add console log for debugging
-    console.log("No session found, redirecting to login")
+  if (!hasSessionCookie) {
     redirect("/login")
   }
 
   try {
+    // Import auth dynamically to prevent issues
+    const { auth } = await import("@/lib/auth")
+    const session = await auth()
+
+    if (!session || !session.accessToken) {
+      redirect("/login")
+    }
+
     const playlists = await getUserPlaylists(session.accessToken)
 
     return (
@@ -34,11 +43,21 @@ export default async function DashboardPage() {
       </div>
     )
   } catch (error) {
-    console.error("Error fetching playlists:", error)
+    console.error("Dashboard error:", error)
+
+    // Return a simple error UI instead of redirecting
     return (
       <div className="container py-10">
-        <h2 className="text-3xl font-bold text-red-500">Error loading playlists</h2>
-        <p>There was an error loading your playlists. Please try again later.</p>
+        <MobileNav />
+        <div className="p-8 border border-red-500/20 rounded-lg bg-red-500/10 text-center">
+          <h2 className="text-2xl font-bold mb-4">Something went wrong</h2>
+          <p className="mb-4">There was an error loading your dashboard. Please try again later.</p>
+          <div className="flex justify-center">
+            <a href="/login" className="px-4 py-2 bg-spotify-purple rounded-md text-white">
+              Return to Login
+            </a>
+          </div>
+        </div>
       </div>
     )
   }

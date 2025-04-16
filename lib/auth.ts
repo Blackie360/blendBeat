@@ -37,21 +37,32 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Access token has expired, refresh it
-      return refreshAccessToken(token)
+      try {
+        return await refreshAccessToken(token)
+      } catch (error) {
+        console.error("Error refreshing access token", error)
+        return { ...token, error: "RefreshAccessTokenError" }
+      }
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken
-      session.error = token.error
-
-      return session
+      try {
+        session.accessToken = token.accessToken
+        session.error = token.error
+        return session
+      } catch (error) {
+        console.error("Error in session callback", error)
+        return session
+      }
     },
   },
   pages: {
     signIn: "/login",
+    error: "/auth-error", // Add an error page
   },
   session: {
     strategy: "jwt",
   },
+  debug: process.env.NODE_ENV === "development",
 }
 
 async function refreshAccessToken(token) {
@@ -82,6 +93,7 @@ async function refreshAccessToken(token) {
       expiresAt: Math.floor(Date.now() / 1000 + data.expires_in),
     }
   } catch (error) {
+    console.error("Error refreshing token:", error)
     return {
       ...token,
       error: "RefreshAccessTokenError",
@@ -89,4 +101,15 @@ async function refreshAccessToken(token) {
   }
 }
 
-export const auth = () => NextAuth(authOptions).auth()
+// For NextAuth.js v4
+export default NextAuth(authOptions)
+
+// For compatibility with different versions
+export const auth = () => {
+  try {
+    return NextAuth(authOptions).auth()
+  } catch (error) {
+    console.error("Auth function error:", error)
+    return null
+  }
+}
