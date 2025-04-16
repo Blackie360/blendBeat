@@ -194,17 +194,16 @@ export async function unfollowPlaylist(accessToken, playlistId) {
 }
 
 // Get Spotify URLs and URIs for a playlist
-export function getSpotifyLinks(playlistId) {
+export function getSpotifyLinks(id: string) {
   return {
-    url: `https://open.spotify.com/playlist/${playlistId}`,
-    uri: `spotify:playlist:${playlistId}`,
+    uri: `spotify:playlist:${id}`,
+    url: `https://open.spotify.com/playlist/${id}`,
   }
 }
 
-// Get Spotify URLs and URIs for a track
-export function getSpotifyTrackLinks(trackId) {
+export function getSpotifyTrackLinks(id: string) {
   return {
-    url: `https://open.spotify.com/track/${trackId}`,
-    uri: `spotify:track:${trackId}`,
+    uri: `spotify:track:${id}`,
+    url: `https://open.spotify.com/track/${id}`,
   }
 }

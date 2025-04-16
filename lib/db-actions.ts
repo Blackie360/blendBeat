@@ -537,6 +537,28 @@ export async function joinBlend(blendId: number, userId: string) {
   }
 }
 
+// Add this function to the existing db-actions.ts file
+export async function getBlendById(blendId: string | number) {
+  try {
+    const query = `
+      SELECT b.*, p.name as playlist_name, p.id as playlist_id, p.spotify_id,
+             p.image_url, p.description, p.owner_id,
+             COUNT(bp.id) as current_participants
+      FROM blends b
+      JOIN playlists p ON b.playlist_id = p.id
+      LEFT JOIN blend_participants bp ON b.id = bp.blend_id
+      WHERE b.id = $1
+      GROUP BY b.id, p.name, p.id, p.spotify_id, p.image_url, p.description, p.owner_id
+    `
+
+    const result = await executeQuery(query, [blendId])
+    return result[0] || null
+  } catch (error) {
+    console.error("Error getting blend by ID:", error)
+    throw error
+  }
+}
+
 // Session helper to get the current user
 export async function getCurrentUser() {
   try {

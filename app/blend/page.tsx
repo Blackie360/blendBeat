@@ -77,8 +77,8 @@ export default function BlendPage() {
         description: "Your collaborative playlist has been created and is ready for participants.",
       })
 
-      // Redirect to the new playlist
-      router.push(`/playlist/${result.playlistId}`)
+      // Redirect to the new blend page instead of the playlist page
+      router.push(`/blend/${result.blendId}`)
     } catch (error) {
       console.error("Error creating blend:", error)
       toast({
@@ -101,7 +101,7 @@ export default function BlendPage() {
         description: "You have successfully joined this blend playlist.",
       })
 
-      router.push(`/playlist/${result.playlistId || playlistId}`)
+      router.push(`/blend/${blendId}`)
     } catch (error) {
       console.error("Error joining blend:", error)
       toast({
