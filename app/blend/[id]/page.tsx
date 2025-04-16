@@ -1,31 +1,112 @@
-import { getSession } from "@/lib/get-session"
-import { redirect } from "next/navigation"
-import { getBlendById } from "@/lib/db-actions"
-import { BlendDetails } from "@/components/blend/blend-details"
-import { BlendShare } from "@/components/blend/blend-share"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { getBlendById, getBlendParticipants } from "@/lib/db"
+import { redirect, notFound } from "next/navigation"
 import { BackButton } from "@/components/navigation/back-button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatDistanceToNow } from "date-fns"
 
-export default async function BlendPage({ params }) {
-  const session = await getSession()
+export default async function BlendDetailPage({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const session = await getServerSession(authOptions)
 
   if (!session?.user) {
     redirect("/login")
   }
 
-  const blend = await getBlendById(params.id)
-
-  if (!blend) {
-    redirect("/blend")
+  const blendId = Number.parseInt(params.id)
+  if (isNaN(blendId)) {
+    notFound()
   }
 
+  const blend = await getBlendById(blendId)
+
+  if (!blend) {
+    notFound()
+  }
+
+  const participants = await getBlendParticipants(blendId)
+
   return (
-    <div className="container py-6 space-y-8">
-      <div className="mb-6">
-        <BackButton />
+    <div className="container mx-auto px-4 py-8">
+      <BackButton />
+
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">{blend.name}</h1>
+        <p className="text-gray-500">Created {formatDistanceToNow(new Date(blend.created_at), { addSuffix: true })}</p>
       </div>
 
-      <BlendDetails blend={blend} />
-      <BlendShare blend={blend} />
+      <div className="grid gap-8 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Blend Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-gray-500">Status:</div>
+              <div>{blend.is_active ? "Active" : "Inactive"}</div>
+
+              <div className="text-gray-500">Max Participants:</div>
+              <div>{blend.max_participants}</div>
+
+              <div className="text-gray-500">Playlist:</div>
+              <div>
+                {blend.playlist_id ? (
+                  <a
+                    href={`https://open.spotify.com/playlist/${blend.playlist_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-500 hover:underline"
+                  >
+                    Open in Spotify
+                  </a>
+                ) : (
+                  "No playlist linked"
+                )}
+              </div>
+
+              {blend.expires_at && (
+                <>
+                  <div className="text-gray-500">Expires:</div>
+                  <div>{formatDistanceToNow(new Date(blend.expires_at), { addSuffix: true })}</div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Participants ({participants.length}/{blend.max_participants})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {participants.length === 0 ? (
+                <p className="text-gray-500">No participants yet</p>
+              ) : (
+                participants.map((user) => (
+                  <div key={user.id} className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name} />
+                      <AvatarFallback>{user.name?.charAt(0) || user.email?.charAt(0) || "?"}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{user.name}</div>
+                      <div className="text-sm text-gray-500">{user.email}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
