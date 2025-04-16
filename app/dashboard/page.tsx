@@ -1,20 +1,15 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { PlaylistGrid } from "@/components/dashboard/playlist-grid"
 import { CreatePlaylistButton } from "@/components/dashboard/create-playlist-button"
-import { cookies } from "next/headers"
-import { getCurrentUser, getUserPlaylists } from "@/lib/db-actions"
+import { PlaylistSkeleton } from "@/components/dashboard/playlist-skeleton"
+import { getCurrentUser } from "@/lib/db-service"
+import { getUserPlaylists } from "@/lib/spotify-service"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Music } from "lucide-react"
 
-export default async function DashboardPage() {
-  // Check for session cookie directly
-  const cookieStore = cookies()
-  const hasSessionCookie =
-    cookieStore.has("next-auth.session-token") || cookieStore.has("__Secure-next-auth.session-token")
-
-  if (!hasSessionCookie) {
-    redirect("/login")
-  }
-
+async function DashboardContent() {
   try {
     const user = await getCurrentUser()
 
@@ -22,10 +17,22 @@ export default async function DashboardPage() {
       redirect("/login")
     }
 
-    const playlists = await getUserPlaylists(user.id)
+    // Get playlists from Spotify API
+    const spotifyPlaylists = await getUserPlaylists()
+
+    // Transform Spotify playlists to our format
+    const playlists = spotifyPlaylists.map((playlist) => ({
+      id: playlist.id,
+      name: playlist.name,
+      description: playlist.description,
+      image_url: playlist.images[0]?.url,
+      is_collaborative: playlist.collaborative,
+      owner_id: user.id,
+      is_public: playlist.public,
+    }))
 
     return (
-      <div className="max-w-[1400px] mx-auto">
+      <>
         <DashboardHeader user={user} />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between my-6 md:my-8 gap-4">
@@ -33,8 +40,24 @@ export default async function DashboardPage() {
           <CreatePlaylistButton />
         </div>
 
-        <PlaylistGrid playlists={playlists} />
-      </div>
+        {playlists.length > 0 ? (
+          <PlaylistGrid playlists={playlists} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Music className="w-5 h-5 text-spotify-purple" />
+                No Playlists Found
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                You don't have any playlists yet. Create a new playlist to get started.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </>
     )
   } catch (error) {
     console.error("Dashboard error:", error)
@@ -54,4 +77,14 @@ export default async function DashboardPage() {
       </div>
     )
   }
+}
+
+export default function DashboardPage() {
+  return (
+    <div className="max-w-[1400px] mx-auto">
+      <Suspense fallback={<PlaylistSkeleton />}>
+        <DashboardContent />
+      </Suspense>
+    </div>
+  )
 }

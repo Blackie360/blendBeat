@@ -4,10 +4,10 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
-import { Search, Plus } from "lucide-react"
+import { Search, Plus, Loader2 } from "lucide-react"
 import Image from "next/image"
-import { v4 as uuidv4 } from "uuid"
 import { useRouter } from "next/navigation"
+import { searchTracks, addTrackToPlaylist } from "@/lib/spotify-service"
 
 export function SearchTracks({ playlistId }) {
   const [query, setQuery] = useState("")
@@ -25,18 +25,13 @@ export function SearchTracks({ playlistId }) {
     setIsSearching(true)
 
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
-
-      if (!response.ok) {
-        throw new Error("Failed to search tracks")
-      }
-
-      const data = await response.json()
-      setResults(data)
+      const tracks = await searchTracks(query)
+      setResults(tracks)
     } catch (error) {
+      console.error("Search error:", error)
       toast({
         title: "Search failed",
-        description: error.message,
+        description: error.message || "Failed to search tracks",
         variant: "destructive",
       })
     } finally {
@@ -48,32 +43,7 @@ export function SearchTracks({ playlistId }) {
     setIsAdding((prev) => ({ ...prev, [track.id]: true }))
 
     try {
-      // Generate a unique ID for the track
-      const trackId = uuidv4()
-
-      // Save the track to our database
-      const response = await fetch("/api/tracks", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: trackId,
-          name: track.name,
-          artist: track.artists.map((a) => a.name).join(", "),
-          album: track.album?.name,
-          duration_ms: track.duration_ms,
-          spotify_uri: track.uri,
-          image_url: track.album?.images?.[0]?.url,
-          preview_url: track.preview_url,
-          playlistId: playlistId,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Failed to add track")
-      }
+      await addTrackToPlaylist(playlistId, track.uri)
 
       toast({
         title: "Track added",
@@ -86,9 +56,10 @@ export function SearchTracks({ playlistId }) {
       // Refresh the page to show the new track
       router.refresh()
     } catch (error) {
+      console.error("Add track error:", error)
       toast({
         title: "Failed to add track",
-        description: error.message,
+        description: error.message || "An error occurred while adding the track",
         variant: "destructive",
       })
     } finally {
@@ -110,8 +81,17 @@ export function SearchTracks({ playlistId }) {
           disabled={isSearching}
           className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
         >
-          <Search className="w-4 h-4 mr-2" />
-          {isSearching ? "Searching..." : "Search"}
+          {isSearching ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Searching...
+            </>
+          ) : (
+            <>
+              <Search className="w-4 h-4 mr-2" />
+              Search
+            </>
+          )}
         </Button>
       </form>
 
@@ -150,8 +130,14 @@ export function SearchTracks({ playlistId }) {
                 disabled={isAdding[track.id]}
                 className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
               >
-                <Plus className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline">{isAdding[track.id] ? "Adding..." : "Add"}</span>
+                {isAdding[track.id] ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-1" />
+                    <span className="hidden xs:inline">Add</span>
+                  </>
+                )}
               </Button>
             </div>
           ))}
