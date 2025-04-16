@@ -4,10 +4,11 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
-import { Search, Plus, Loader2 } from "lucide-react"
+import { Search, Plus, Loader2, ExternalLink } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { addTrackToPlaylistClient } from "@/lib/client-actions"
+import { getSpotifyTrackLinks } from "@/lib/spotify-api"
 
 // Define the SpotifyTrack type
 interface SpotifyTrack {
@@ -88,6 +89,11 @@ export function SearchTracks({ playlistId }) {
     }
   }
 
+  const openInSpotify = (trackId: string) => {
+    const { url } = getSpotifyTrackLinks(trackId)
+    window.open(url, "_blank")
+  }
+
   return (
     <div className="mb-6">
       <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -121,7 +127,8 @@ export function SearchTracks({ playlistId }) {
           {results.map((track) => (
             <div
               key={track.id}
-              className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3 hover:bg-spotify-purple/10 transition-colors"
+              className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3 hover:bg-spotify-purple/10 transition-colors cursor-pointer"
+              onClick={() => openInSpotify(track.id)}
             >
               <div className="relative w-10 h-10 flex-shrink-0">
                 {track.album?.images?.[0]?.url ? (
@@ -145,21 +152,38 @@ export function SearchTracks({ playlistId }) {
                 </div>
               </div>
 
-              <Button
-                size="sm"
-                onClick={() => handleAddTrack(track)}
-                disabled={isAdding[track.id]}
-                className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
-              >
-                {isAdding[track.id] ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-1" />
-                    <span className="hidden xs:inline">Add</span>
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openInSpotify(track.id)
+                  }}
+                  className="hidden sm:flex"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleAddTrack(track)
+                  }}
+                  disabled={isAdding[track.id]}
+                  className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
+                >
+                  {isAdding[track.id] ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-1" />
+                      <span className="hidden xs:inline">Add</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           ))}
         </div>

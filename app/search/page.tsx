@@ -1,14 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Music, User, Loader2 } from "lucide-react"
+import { Search, Music, User, Loader2, ExternalLink } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { Skeleton } from "@/components/ui/skeleton"
+import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid"
+import { getSpotifyTrackLinks } from "@/lib/spotify-api"
+import { motion } from "framer-motion"
 
 // Define the SpotifyTrack type
 interface SpotifyTrack {
@@ -73,19 +76,33 @@ export default function SearchPage() {
     }
   }
 
+  const openInSpotify = (trackId: string) => {
+    const { url } = getSpotifyTrackLinks(trackId)
+    window.open(url, "_blank")
+  }
+
+  // Define different sizes for the bento grid
+  const getSize = (index) => {
+    // Create a pattern of different sizes
+    const pattern = index % 5
+    switch (pattern) {
+      case 0: // Large
+        return "lg"
+      case 1: // Medium horizontal
+        return "wide"
+      case 2: // Medium vertical
+        return "tall"
+      default: // Small
+        return "sm"
+    }
+  }
+
   return (
     <div className="max-w-[1400px] mx-auto">
       <h1 className="text-2xl md:text-3xl font-bold mb-6">Search</h1>
 
       <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="w-5 h-5 text-spotify-purple" />
-            Search for Music
-          </CardTitle>
-          <CardDescription>Find your favorite songs, artists, and playlists</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSearch} className="flex gap-2">
             <Input
               placeholder="Search for songs, artists, or playlists..."
@@ -117,19 +134,15 @@ export default function SearchPage() {
       {isSearching ? (
         <div className="space-y-4">
           <Skeleton className="h-10 w-full max-w-md" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <BentoGrid>
             {Array(8)
               .fill(0)
               .map((_, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <Skeleton className="h-40 w-full" />
-                  <CardContent className="p-4">
-                    <Skeleton className="h-5 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </CardContent>
-                </Card>
+                <BentoGridItem key={i} size={getSize(i)}>
+                  <Skeleton className="h-full w-full rounded-lg" />
+                </BentoGridItem>
               ))}
-          </div>
+          </BentoGrid>
         </div>
       ) : searchResults.tracks.length > 0 ? (
         <div>
@@ -150,32 +163,50 @@ export default function SearchPage() {
             </TabsList>
 
             <TabsContent value="tracks" className="mt-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {searchResults.tracks.map((track) => (
-                  <Card key={track.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="relative h-40 w-full">
-                      {track.album?.images?.[0]?.url ? (
-                        <Image
-                          src={track.album.images[0].url || "/placeholder.svg"}
-                          alt={track.album.name}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-spotify-purple-dark/30 flex items-center justify-center">
-                          <Music className="w-8 h-8 text-spotify-purple-light" />
+              <BentoGrid>
+                {searchResults.tracks.map((track, index) => (
+                  <BentoGridItem key={track.id} size={getSize(index)}>
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                      className="h-full cursor-pointer"
+                      onClick={() => openInSpotify(track.id)}
+                    >
+                      <Card className="overflow-hidden h-full group">
+                        <div className="relative h-full w-full">
+                          {track.album?.images?.[0]?.url ? (
+                            <Image
+                              src={track.album.images[0].url || "/placeholder.svg"}
+                              alt={track.album.name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-spotify-purple-dark/30 flex items-center justify-center">
+                              <Music className="w-8 h-8 text-spotify-purple-light" />
+                            </div>
+                          )}
+
+                          {/* Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-4">
+                            <h3 className="font-medium text-white text-lg">{track.name}</h3>
+                            <p className="text-sm text-white/80 truncate">
+                              {track.artists.map((artist) => artist.name).join(", ")}
+                            </p>
+                          </div>
+
+                          {/* Spotify icon */}
+                          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="bg-black/60 p-2 rounded-full">
+                              <ExternalLink className="w-4 h-4 text-white" />
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-medium truncate">{track.name}</h3>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {track.artists.map((artist) => artist.name).join(", ")}
-                      </p>
-                    </CardContent>
-                  </Card>
+                      </Card>
+                    </motion.div>
+                  </BentoGridItem>
                 ))}
-              </div>
+              </BentoGrid>
             </TabsContent>
           </Tabs>
         </div>

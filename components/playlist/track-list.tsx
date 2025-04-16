@@ -76,6 +76,7 @@ export function TrackList({ tracks, playlistId }) {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
             className="group"
+            onClick={() => openInSpotify(track.id)}
           >
             {isMobile
               ? renderMobileTrack(track, handleRemoveTrack, handlePlayPreview, openInSpotify, isRemoving)
@@ -89,7 +90,7 @@ export function TrackList({ tracks, playlistId }) {
 
 function renderMobileTrack(track, handleRemoveTrack, handlePlayPreview, openInSpotify, isRemoving) {
   return (
-    <div className="flex items-center gap-3 p-3 mb-2 border rounded-lg border-spotify-purple/20 hover:bg-spotify-purple/5">
+    <div className="flex items-center gap-3 p-3 mb-2 border rounded-lg border-spotify-purple/20 hover:bg-spotify-purple/5 cursor-pointer">
       <div className="relative flex-shrink-0 w-12 h-12">
         {track.image_url ? (
           <Image
@@ -111,24 +112,37 @@ function renderMobileTrack(track, handleRemoveTrack, handlePlayPreview, openInSp
       </div>
 
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
           <Button variant="ghost" size="icon" className="flex-shrink-0">
             <MoreHorizontal className="w-5 h-5" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {track.preview_url && (
-            <DropdownMenuItem onClick={() => handlePlayPreview(track.preview_url)}>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePlayPreview(track.preview_url)
+              }}
+            >
               <Play className="w-4 h-4 mr-2" />
               Play Preview
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => openInSpotify(track.id)}>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation()
+              openInSpotify(track.id)
+            }}
+          >
             <ExternalLink className="w-4 h-4 mr-2" />
             Open in Spotify
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => handleRemoveTrack(track.id, track.spotify_uri)}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleRemoveTrack(track.id, track.spotify_uri)
+            }}
             disabled={isRemoving[track.id]}
             className="text-red-500 focus:text-red-500"
           >
@@ -143,7 +157,7 @@ function renderMobileTrack(track, handleRemoveTrack, handlePlayPreview, openInSp
 
 function renderDesktopTrack(track, handleRemoveTrack, handlePlayPreview, openInSpotify, isRemoving) {
   return (
-    <div className="flex items-center gap-4 p-3 mb-2 border rounded-lg border-spotify-purple/20 hover:bg-spotify-purple/5">
+    <div className="flex items-center gap-4 p-3 mb-2 border rounded-lg border-spotify-purple/20 hover:bg-spotify-purple/5 cursor-pointer">
       <div className="relative flex-shrink-0 w-12 h-12">
         {track.image_url ? (
           <Image
@@ -172,26 +186,40 @@ function renderDesktopTrack(track, handleRemoveTrack, handlePlayPreview, openInS
         {new Date(track.added_at).toLocaleDateString()}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
         {track.preview_url && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => handlePlayPreview(track.preview_url)}
+            onClick={(e) => {
+              e.stopPropagation()
+              handlePlayPreview(track.preview_url)
+            }}
             className="hidden group-hover:flex"
           >
             <Play className="w-5 h-5" />
           </Button>
         )}
 
-        <Button variant="ghost" size="icon" onClick={() => openInSpotify(track.id)} className="hidden group-hover:flex">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation()
+            openInSpotify(track.id)
+          }}
+          className="hidden group-hover:flex"
+        >
           <ExternalLink className="w-5 h-5" />
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => handleRemoveTrack(track.id, track.spotify_uri)}
+          onClick={(e) => {
+            e.stopPropagation()
+            handleRemoveTrack(track.id, track.spotify_uri)
+          }}
           disabled={isRemoving[track.id]}
           className="hidden text-red-500 group-hover:flex hover:text-red-600 hover:bg-red-100"
         >

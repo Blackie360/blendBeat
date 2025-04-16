@@ -8,6 +8,8 @@ import { useToast } from "@/components/ui/use-toast"
 import { Copy, Twitter, Facebook, Linkedin, Music } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid"
+import { motion } from "framer-motion"
 
 export function BlendShare({ blend }) {
   const [shareUrl, setShareUrl] = useState("")
@@ -99,6 +101,20 @@ export function BlendShare({ blend }) {
     }
   }
 
+  // Define different sizes for the bento grid
+  const getSize = (index) => {
+    // Create a pattern of different sizes
+    const pattern = index % 3
+    switch (pattern) {
+      case 0: // Medium horizontal
+        return "wide"
+      case 1: // Medium vertical
+        return "tall"
+      default: // Small
+        return "sm"
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -184,32 +200,35 @@ export function BlendShare({ blend }) {
                   <p className="mt-2 text-sm text-muted-foreground">Loading users...</p>
                 </div>
               ) : randomUsers.length > 0 ? (
-                <div className="space-y-3">
-                  {randomUsers.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between p-3 border rounded-lg border-spotify-purple/20"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={user.image || "/placeholder.svg"} />
-                          <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{user.name}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => inviteUser(user.id)}
-                        className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
-                      >
-                        Invite
-                      </Button>
-                    </div>
+                <BentoGrid cols={2}>
+                  {randomUsers.map((user, index) => (
+                    <BentoGridItem key={user.id} size={getSize(index)}>
+                      <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }} className="h-full">
+                        <Card className="h-full border-spotify-purple/20 bg-spotify-purple-dark/5 hover:bg-spotify-purple-dark/10 transition-colors">
+                          <CardContent className="p-4 flex flex-col h-full justify-between">
+                            <div className="flex items-center gap-3 mb-4">
+                              <Avatar>
+                                <AvatarImage src={user.image || "/placeholder.svg"} />
+                                <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">{user.name}</div>
+                                <div className="text-sm text-muted-foreground truncate max-w-[150px]">{user.email}</div>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => inviteUser(user.id)}
+                              className="bg-spotify-purple hover:bg-spotify-purple-dark text-white w-full"
+                            >
+                              Invite to Blend
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </BentoGridItem>
                   ))}
-                </div>
+                </BentoGrid>
               ) : (
                 <div className="text-center py-4">
                   <p className="text-muted-foreground">No more users available to invite</p>
