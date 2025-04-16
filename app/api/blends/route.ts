@@ -9,15 +9,17 @@ export async function POST(request: Request) {
     const session = await getSession()
 
     if (!session?.user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { name, maxParticipants, description } = await request.json()
 
     // Validate required fields
     if (!name || !maxParticipants) {
-      return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
+
+    console.log("Creating blend with:", { name, maxParticipants, description })
 
     // Start a transaction
     await executeQuery("BEGIN")
@@ -122,6 +124,12 @@ export async function POST(request: Request) {
       // Commit the transaction
       await executeQuery("COMMIT")
 
+      console.log("Blend created successfully:", {
+        blendId: blend[0].id,
+        playlistId,
+        spotifyPlaylistId,
+      })
+
       return NextResponse.json({
         success: true,
         playlistId,
@@ -132,14 +140,14 @@ export async function POST(request: Request) {
     } catch (error) {
       // Rollback the transaction on error
       await executeQuery("ROLLBACK")
+      console.error("Transaction error creating blend playlist:", error)
       throw error
     }
   } catch (error) {
     console.error("Error creating blend playlist:", error)
     return NextResponse.json(
       {
-        message: "Failed to create blend playlist",
-        error: error.message,
+        error: error.message || "Failed to create blend playlist",
       },
       { status: 500 },
     )
@@ -151,7 +159,7 @@ export async function GET(request: Request) {
     const session = await getSession()
 
     if (!session?.user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Get active blends
@@ -176,8 +184,7 @@ export async function GET(request: Request) {
     console.error("Error getting active blends:", error)
     return NextResponse.json(
       {
-        message: "Failed to get active blends",
-        error: error.message,
+        error: error.message || "Failed to get active blends",
       },
       { status: 500 },
     )

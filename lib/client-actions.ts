@@ -135,6 +135,8 @@ export async function removeCollaboratorClient(playlistId: string, userId: strin
 
 export async function createBlendPlaylistClient(name: string, maxParticipants: number, description?: string) {
   try {
+    console.log("Creating blend with:", { name, maxParticipants, description })
+
     const response = await fetch("/api/blends", {
       method: "POST",
       headers: {
@@ -148,11 +150,13 @@ export async function createBlendPlaylistClient(name: string, maxParticipants: n
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.message || "Failed to create blend playlist")
+      const errorData = await response.json()
+      console.error("Server error response:", errorData)
+      throw new Error(errorData.message || errorData.error || "Failed to create blend playlist")
     }
 
     const result = await response.json()
+    console.log("Blend created successfully:", result)
 
     // Revalidate relevant paths
     await revalidatePathClient("/dashboard")

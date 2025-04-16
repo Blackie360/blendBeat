@@ -2,6 +2,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { SpotifyProvider } from "@/lib/spotify-provider"
 import { AuthProvider } from "@/lib/auth-provider"
+import { MobileNavWrapper } from "@/components/dashboard/mobile-nav-wrapper"
 import "./globals.css"
 
 export const metadata = {
@@ -18,7 +19,10 @@ export default function RootLayout({ children }) {
         <ThemeProvider attribute="class" defaultTheme="dark">
           <AuthProvider>
             <SpotifyProvider>
-              {children}
+              <div className="min-h-screen pb-16 md:pb-0">
+                {children}
+                <MobileNavWrapper />
+              </div>
               <Toaster />
             </SpotifyProvider>
           </AuthProvider>

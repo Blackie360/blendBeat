@@ -8,6 +8,8 @@ import { TrackSkeleton } from "@/components/playlist/track-skeleton"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/db-service"
 import { getPlaylistDetails } from "@/lib/spotify-service"
+import { BackButton } from "@/components/navigation/back-button"
+import { AuthenticatedMobileNav } from "@/components/navigation/authenticated-mobile-nav"
 
 function CollaboratorsLoading() {
   return (
@@ -103,6 +105,10 @@ async function PlaylistContent({ params }) {
 
     return (
       <>
+        <div className="mb-6">
+          <BackButton />
+        </div>
+
         <PlaylistHeader playlist={playlistData} />
 
         <div className="grid grid-cols-1 gap-6 mt-6 md:mt-8 lg:grid-cols-3">
@@ -142,10 +148,13 @@ async function PlaylistContent({ params }) {
 
 export default function PlaylistPage({ params }) {
   return (
-    <div className="max-w-[1400px] mx-auto">
+    <div className="max-w-[1400px] mx-auto pb-16 md:pb-0">
       <Suspense
         fallback={
           <>
+            <div className="mb-6">
+              <BackButton />
+            </div>
             <PlaylistHeaderLoading />
             <div className="grid grid-cols-1 gap-6 mt-6 md:mt-8 lg:grid-cols-3">
               <div className="lg:col-span-2">
@@ -161,6 +170,7 @@ export default function PlaylistPage({ params }) {
       >
         <PlaylistContent params={params} />
       </Suspense>
+      <AuthenticatedMobileNav />
     </div>
   )
 }

@@ -4,7 +4,6 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { DashboardError } from "@/components/dashboard/dashboard-error"
 import { Sidebar } from "@/components/dashboard/sidebar"
-import { AuthenticatedMobileNav } from "@/components/dashboard/authenticated-mobile-nav"
 
 export default function DashboardLayout({ children }) {
   return (
@@ -12,14 +11,13 @@ export default function DashboardLayout({ children }) {
       <div className="hidden md:block">
         <Sidebar />
       </div>
-      <div className="flex-1 ml-0 md:ml-64 pb-16 md:pb-0">
+      <div className="flex-1 ml-0 md:ml-64">
         <MobileNav />
         <main className="p-4 md:p-8">
           <ErrorBoundary fallback={<DashboardError />}>
             <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
           </ErrorBoundary>
         </main>
-        <AuthenticatedMobileNav />
       </div>
     </div>
   )

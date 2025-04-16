@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createBlendPlaylistClient, joinBlendClient } from "@/lib/client-actions"
 import { getSpotifyLinks } from "@/lib/spotify-api"
+import { BackButton } from "@/components/navigation/back-button"
 
 export default function BlendPage() {
   const [participantCount, setParticipantCount] = useState(3)
@@ -66,19 +67,27 @@ export default function BlendPage() {
     setIsSubmitting(true)
 
     try {
+      console.log("Submitting blend creation:", { playlistName, participantCount })
+
       const result = await createBlendPlaylistClient(
         playlistName,
         participantCount,
         `A collaborative blend playlist with up to ${participantCount} participants`,
       )
 
+      console.log("Blend creation result:", result)
+
       toast({
         title: "Blend playlist created!",
         description: "Your collaborative playlist has been created and is ready for participants.",
       })
 
-      // Redirect to the new blend page instead of the playlist page
-      router.push(`/blend/${result.blendId}`)
+      // Redirect to the new blend page
+      if (result && result.blendId) {
+        router.push(`/blend/${result.blendId}`)
+      } else {
+        throw new Error("No blend ID returned from server")
+      }
     } catch (error) {
       console.error("Error creating blend:", error)
       toast({
@@ -87,7 +96,6 @@ export default function BlendPage() {
         variant: "destructive",
       })
       setIsCreating(false)
-    } finally {
       setIsSubmitting(false)
     }
   }
@@ -178,6 +186,10 @@ export default function BlendPage() {
 
   return (
     <div className="container max-w-4xl py-6 md:py-10 px-4 sm:px-6">
+      <div className="mb-6">
+        <BackButton />
+      </div>
+
       <h1 className="mb-6 md:mb-8 text-3xl md:text-4xl font-bold text-center purple-gradient-text">Spotify Blend</h1>
 
       <Tabs defaultValue="create">

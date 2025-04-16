@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { getBlendById } from "@/lib/db-actions"
 import { BlendDetails } from "@/components/blend/blend-details"
 import { BlendShare } from "@/components/blend/blend-share"
+import { BackButton } from "@/components/navigation/back-button"
 
 export default async function BlendPage({ params }) {
   const session = await getSession()
@@ -19,6 +20,10 @@ export default async function BlendPage({ params }) {
 
   return (
     <div className="container py-6 space-y-8">
+      <div className="mb-6">
+        <BackButton />
+      </div>
+
       <BlendDetails blend={blend} />
       <BlendShare blend={blend} />
     </div>
