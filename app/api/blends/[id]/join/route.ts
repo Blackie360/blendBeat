@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { executeQuery } from "@/lib/db"
 import { getSession } from "@/lib/get-session"
-import { revalidatePath } from "next/cache"
+import { joinBlendWithRevalidation } from "@/lib/server-actions"
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -51,28 +51,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       })
     }
 
-    // Add the user as a participant
-    const participantQuery = `
-      INSERT INTO blend_participants (blend_id, user_id)
-      VALUES ($1, $2)
-      RETURNING *
-    `
-
-    const result = await executeQuery(participantQuery, [blendId, session.user.id])
-
-    // Add the user as a collaborator to the playlist
-    const collaboratorQuery = `
-      INSERT INTO collaborators (playlist_id, user_id, role)
-      VALUES ($1, $2, 'editor')
-      ON CONFLICT (playlist_id, user_id) DO NOTHING
-      RETURNING *
-    `
-
-    await executeQuery(collaboratorQuery, [blend[0].playlist_id, session.user.id])
-
-    // Revalidate paths
-    revalidatePath("/blend")
-    revalidatePath(`/playlist/${blend[0].playlist_id}`)
+    // Use the server action to join the blend
+    await joinBlendWithRevalidation(blendId, session.user.id)
 
     return NextResponse.json({
       success: true,

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { executeQuery } from "@/lib/db"
 import { getSession } from "@/lib/get-session"
-import { revalidatePath } from "next/cache"
-import { v4 as uuidv4 } from "uuid"
+import { createBlendPlaylistWithRevalidation } from "@/lib/server-actions"
 
 export async function POST(request: Request) {
   try {
@@ -19,80 +18,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
     }
 
-    // Start a transaction
-    await executeQuery("BEGIN")
+    // Use the server action to create the blend
+    const result = await createBlendPlaylistWithRevalidation(name, maxParticipants, session.user.id)
 
-    try {
-      // Create a new playlist
-      const playlistId = uuidv4()
-      const playlistQuery = `
-        INSERT INTO playlists (
-          id, name, description, owner_id, is_collaborative, is_public, updated_at
-        )
-        VALUES (
-          $1, $2, $3, $4, true, true, CURRENT_TIMESTAMP
-        )
-        RETURNING *
-      `
-
-      const blendDescription =
-        description || `A collaborative blend playlist with up to ${maxParticipants} participants`
-      const playlist = await executeQuery(playlistQuery, [
-        playlistId,
-        `${name} (Blend)`,
-        blendDescription,
-        session.user.id,
-      ])
-
-      // Create a blend record
-      const blendQuery = `
-        INSERT INTO blends (
-          name, playlist_id, max_participants, is_active, 
-          created_at, expires_at
-        )
-        VALUES (
-          $1, $2, $3, true, CURRENT_TIMESTAMP, 
-          CURRENT_TIMESTAMP + INTERVAL '30 days'
-        )
-        RETURNING *
-      `
-
-      const blend = await executeQuery(blendQuery, [name, playlistId, maxParticipants])
-
-      // Add the creator as a participant
-      const participantQuery = `
-        INSERT INTO blend_participants (blend_id, user_id)
-        VALUES ($1, $2)
-        RETURNING *
-      `
-
-      await executeQuery(participantQuery, [blend[0].id, session.user.id])
-
-      // Commit the transaction
-      await executeQuery("COMMIT")
-
-      // Revalidate relevant pages
-      revalidatePath("/dashboard")
-      revalidatePath("/blend")
-
-      return NextResponse.json({
-        success: true,
-        playlistId: playlist[0].id,
-        blendId: blend[0].id,
-        message: "Blend playlist created successfully",
-      })
-    } catch (error) {
-      // Rollback the transaction on error
-      await executeQuery("ROLLBACK")
-      console.error("Database error creating blend playlist:", error)
-      return NextResponse.json(
-        {
-          message: "Database error creating blend playlist",
-          error: error.message,
-        },
-        { status: 500 },
-      )
-    }
+    return NextResponse.json({
+      success: true,
+      playlistId: result.playlistId,
+      blendId: result.blendId,
+      message: "Blend playlist created successfully",
+    })
   } catch (error) {
     console.error("Error creating blend playlist:", error)
     return NextResponse.json(

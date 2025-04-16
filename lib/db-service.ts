@@ -1,6 +1,5 @@
 import { executeQuery } from "./db"
 import { getSession } from "./get-session"
-import { revalidatePath } from "next/cache"
 import { v4 as uuidv4 } from "uuid"
 
 // Types for better type safety
@@ -238,7 +237,6 @@ export async function addTrackToPlaylist(playlistId: string, trackId: string, us
     `
 
     const result = await executeQuery(query, [playlistId, trackId, userId])
-    revalidatePath(`/playlist/${playlistId}`)
     return result[0]
   } catch (error) {
     console.error("Error adding track to playlist:", error)
@@ -255,7 +253,6 @@ export async function removeTrackFromPlaylist(playlistId: string, trackId: strin
     `
 
     const result = await executeQuery(query, [playlistId, trackId])
-    revalidatePath(`/playlist/${playlistId}`)
     return result[0]
   } catch (error) {
     console.error("Error removing track from playlist:", error)
@@ -337,9 +334,6 @@ export async function createBlendPlaylist(
       // Commit the transaction
       await executeQuery("COMMIT")
 
-      revalidatePath("/dashboard")
-      revalidatePath("/blend")
-
       return {
         playlistId: playlist[0].id,
         blendId: blend[0].id,
@@ -410,9 +404,6 @@ export async function joinBlend(blendId: number, userId: string) {
     // Add the user as a collaborator to the playlist
     await addCollaborator(blend[0].playlist_id, userId)
 
-    revalidatePath("/blend")
-    revalidatePath(`/playlist/${blend[0].playlist_id}`)
-
     return result[0]
   } catch (error) {
     console.error("Error joining blend:", error)
@@ -432,7 +423,6 @@ export async function addCollaborator(playlistId: string, userId: string, role =
     `
 
     const result = await executeQuery(query, [playlistId, userId, role])
-    revalidatePath(`/playlist/${playlistId}`)
     return result[0]
   } catch (error) {
     console.error("Error adding collaborator:", error)
@@ -449,7 +439,6 @@ export async function removeCollaborator(playlistId: string, userId: string) {
     `
 
     const result = await executeQuery(query, [playlistId, userId])
-    revalidatePath(`/playlist/${playlistId}`)
     return result[0]
   } catch (error) {
     console.error("Error removing collaborator:", error)

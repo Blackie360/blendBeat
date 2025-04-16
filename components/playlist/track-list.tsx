@@ -9,6 +9,7 @@ import { formatDuration } from "@/lib/utils"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { removeTrackFromPlaylistClient } from "@/lib/client-actions"
 
 export function TrackList({ tracks, playlistId }) {
   const { toast } = useToast()
@@ -19,14 +20,7 @@ export function TrackList({ tracks, playlistId }) {
     setIsRemoving((prev) => ({ ...prev, [trackId]: true }))
 
     try {
-      const response = await fetch(`/api/tracks?playlistId=${playlistId}&trackId=${trackId}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Failed to remove track")
-      }
+      await removeTrackFromPlaylistClient(playlistId, trackId)
 
       toast({
         title: "Track removed",
@@ -38,7 +32,7 @@ export function TrackList({ tracks, playlistId }) {
     } catch (error) {
       toast({
         title: "Failed to remove track",
-        description: error.message,
+        description: error.message || "An error occurred while removing the track",
         variant: "destructive",
       })
     } finally {

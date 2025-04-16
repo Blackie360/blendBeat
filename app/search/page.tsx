@@ -9,12 +9,30 @@ import { Search, Music, User, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { Skeleton } from "@/components/ui/skeleton"
-import { searchTracks } from "@/lib/spotify-service"
+
+// Define the SpotifyTrack type
+interface SpotifyTrack {
+  id: string
+  name: string
+  uri: string
+  duration_ms: number
+  preview_url: string | null
+  artists: { id: string; name: string }[]
+  album: {
+    id: string
+    name: string
+    images: { url: string; height: number; width: number }[]
+  }
+}
 
 export default function SearchPage() {
   const [query, setQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState({
+  const [searchResults, setSearchResults] = useState<{
+    tracks: SpotifyTrack[]
+    artists: any[]
+    playlists: any[]
+  }>({
     tracks: [],
     artists: [],
     playlists: [],
@@ -30,8 +48,14 @@ export default function SearchPage() {
     setIsSearching(true)
 
     try {
-      // For now, we'll just search tracks using our service
-      const tracks = await searchTracks(query, 20)
+      // For now, we'll just search tracks using our API
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+
+      if (!response.ok) {
+        throw new Error("Failed to search tracks")
+      }
+
+      const tracks = await response.json()
 
       setSearchResults({
         ...searchResults,

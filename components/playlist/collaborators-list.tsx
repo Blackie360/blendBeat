@@ -9,6 +9,7 @@ import { MoreHorizontal, UserMinus, UserPlus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
+import { addCollaboratorClient, removeCollaboratorClient } from "@/lib/client-actions"
 
 export function CollaboratorsList({ playlistId }) {
   const [collaborators, setCollaborators] = useState([])
@@ -47,14 +48,7 @@ export function CollaboratorsList({ playlistId }) {
 
   const handleRemoveCollaborator = async (userId) => {
     try {
-      const response = await fetch(`/api/collaborators?playlistId=${playlistId}&userId=${userId}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Failed to remove collaborator")
-      }
+      await removeCollaboratorClient(playlistId, userId)
 
       // Update the local state
       setCollaborators(collaborators.filter((user) => user.user_id !== userId))
@@ -86,22 +80,7 @@ export function CollaboratorsList({ playlistId }) {
     setIsInviting(true)
 
     try {
-      const response = await fetch("/api/collaborators", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          playlistId,
-          email,
-          role: "editor",
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Failed to invite collaborator")
-      }
+      await addCollaboratorClient(playlistId, email, "editor")
 
       toast({
         title: "Invitation sent",

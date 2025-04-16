@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { executeQuery } from "@/lib/db"
 import { getSession } from "@/lib/get-session"
-import { revalidatePath } from "next/cache"
+import { addCollaboratorWithRevalidation, removeCollaboratorWithRevalidation } from "@/lib/server-actions"
 
 export async function POST(request: Request) {
   try {
@@ -54,20 +54,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "User not found. An invitation will be sent." }, { status: 200 })
     }
 
-    // Add the collaborator
-    const collaboratorQuery = `
-      INSERT INTO collaborators (playlist_id, user_id, role)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (playlist_id, user_id) 
-      DO UPDATE SET role = $3
-      RETURNING *
-    `
-    const collaborator = await executeQuery(collaboratorQuery, [playlistId, user[0].id, role])
+    // Add the collaborator using the server action
+    const collaborator = await addCollaboratorWithRevalidation(playlistId, user[0].id, role)
 
-    // Revalidate the playlist page
-    revalidatePath(`/playlist/${playlistId}`)
-
-    return NextResponse.json(collaborator[0])
+    return NextResponse.json(collaborator)
   } catch (error) {
     console.error("Error adding collaborator:", error)
     return NextResponse.json({ message: "Failed to add collaborator" }, { status: 500 })
@@ -115,18 +105,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ message: "You don't have permission to remove collaborators" }, { status: 403 })
     }
 
-    // Remove the collaborator
-    const collaboratorQuery = `
-      DELETE FROM collaborators
-      WHERE playlist_id = $1 AND user_id = $2
-      RETURNING *
-    `
-    const collaborator = await executeQuery(collaboratorQuery, [playlistId, userId])
+    // Remove the collaborator using the server action
+    const collaborator = await removeCollaboratorWithRevalidation(playlistId, userId)
 
-    // Revalidate the playlist page
-    revalidatePath(`/playlist/${playlistId}`)
-
-    return NextResponse.json(collaborator[0] || { success: true })
+    return NextResponse.json(collaborator || { success: true })
   } catch (error) {
     console.error("Error removing collaborator:", error)
     return NextResponse.json({ message: "Failed to remove collaborator" }, { status: 500 })

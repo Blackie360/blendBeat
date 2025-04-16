@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
+import { createBlendPlaylistClient, joinBlendClient } from "@/lib/client-actions"
 
 export default function BlendPage() {
   const [participantCount, setParticipantCount] = useState(3)
@@ -64,24 +65,11 @@ export default function BlendPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch("/api/blends", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: playlistName,
-          maxParticipants: participantCount,
-          description: `A collaborative blend playlist with up to ${participantCount} participants`,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Failed to create blend playlist")
-      }
-
-      const result = await response.json()
+      const result = await createBlendPlaylistClient(
+        playlistName,
+        participantCount,
+        `A collaborative blend playlist with up to ${participantCount} participants`,
+      )
 
       toast({
         title: "Blend playlist created!",
@@ -105,21 +93,14 @@ export default function BlendPage() {
 
   const handleJoinBlend = async (blendId, playlistId) => {
     try {
-      const response = await fetch(`/api/blends/${blendId}/join`, {
-        method: "POST",
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Failed to join blend")
-      }
+      const result = await joinBlendClient(blendId)
 
       toast({
         title: "Joined blend!",
         description: "You have successfully joined this blend playlist.",
       })
 
-      router.push(`/playlist/${playlistId}`)
+      router.push(`/playlist/${result.playlistId || playlistId}`)
     } catch (error) {
       console.error("Error joining blend:", error)
       toast({

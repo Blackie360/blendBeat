@@ -7,13 +7,28 @@ import { useToast } from "@/components/ui/use-toast"
 import { Search, Plus, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { searchTracks, addTrackToPlaylist } from "@/lib/spotify-service"
+import { addTrackToPlaylistClient } from "@/lib/client-actions"
+
+// Define the SpotifyTrack type
+interface SpotifyTrack {
+  id: string
+  name: string
+  uri: string
+  duration_ms: number
+  preview_url: string | null
+  artists: { id: string; name: string }[]
+  album: {
+    id: string
+    name: string
+    images: { url: string; height: number; width: number }[]
+  }
+}
 
 export function SearchTracks({ playlistId }) {
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState([])
+  const [results, setResults] = useState<SpotifyTrack[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  const [isAdding, setIsAdding] = useState({})
+  const [isAdding, setIsAdding] = useState<Record<string, boolean>>({})
   const { toast } = useToast()
   const router = useRouter()
 
@@ -25,7 +40,13 @@ export function SearchTracks({ playlistId }) {
     setIsSearching(true)
 
     try {
-      const tracks = await searchTracks(query)
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+
+      if (!response.ok) {
+        throw new Error("Failed to search tracks")
+      }
+
+      const tracks = await response.json()
       setResults(tracks)
     } catch (error) {
       console.error("Search error:", error)
@@ -39,11 +60,11 @@ export function SearchTracks({ playlistId }) {
     }
   }
 
-  const handleAddTrack = async (track) => {
+  const handleAddTrack = async (track: SpotifyTrack) => {
     setIsAdding((prev) => ({ ...prev, [track.id]: true }))
 
     try {
-      await addTrackToPlaylist(playlistId, track.uri)
+      await addTrackToPlaylistClient(playlistId, track)
 
       toast({
         title: "Track added",
