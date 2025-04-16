@@ -1,12 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/components/ui/use-toast"
-import { ExternalLink, LinkIcon, MoreHorizontal, Music, Share, Users } from "lucide-react"
-import { inviteToPlaylist } from "@/lib/actions"
-import { useState } from "react"
+import { LinkIcon, MoreHorizontal, Music, Share, Users } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -17,12 +16,14 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useRouter } from "next/navigation"
 
 export function PlaylistHeader({ playlist }) {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [isInviting, setIsInviting] = useState(false)
   const { toast } = useToast()
+  const router = useRouter()
 
   const handleInvite = async () => {
     if (!email) return
@@ -30,7 +31,22 @@ export function PlaylistHeader({ playlist }) {
     setIsInviting(true)
 
     try {
-      await inviteToPlaylist(playlist.id, email)
+      const response = await fetch("/api/collaborators", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          playlistId: playlist.id,
+          email,
+          role: "editor",
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to invite collaborator")
+      }
 
       toast({
         title: "Invitation sent",
@@ -39,6 +55,9 @@ export function PlaylistHeader({ playlist }) {
 
       setEmail("")
       setIsInviteDialogOpen(false)
+
+      // Refresh the page to update the collaborators list
+      router.refresh()
     } catch (error) {
       toast({
         title: "Failed to send invitation",
@@ -59,23 +78,19 @@ export function PlaylistHeader({ playlist }) {
     })
   }
 
-  const handleOpenInSpotify = () => {
-    window.open(playlist.external_urls.spotify, "_blank")
-  }
-
   return (
-    <div className="flex flex-col gap-6 md:flex-row">
-      <div className="relative flex-shrink-0 w-48 h-48 md:w-64 md:h-64 animated-border">
-        {playlist.images && playlist.images[0] ? (
+    <div className="flex flex-col gap-4 md:flex-row md:gap-6">
+      <div className="relative flex-shrink-0 w-full h-48 sm:w-48 sm:h-48 md:w-64 md:h-64 animated-border mx-auto sm:mx-0">
+        {playlist.image_url ? (
           <Image
-            src={playlist.images[0].url || "/placeholder.svg"}
+            src={playlist.image_url || "/placeholder.svg"}
             alt={playlist.name}
             fill
             className="object-cover rounded-lg"
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full bg-muted rounded-lg">
-            <Music className="w-16 h-16 text-spotify-purple-light" />
+            <Music className="w-12 h-12 md:w-16 md:h-16 text-spotify-purple-light" />
           </div>
         )}
       </div>
@@ -83,7 +98,7 @@ export function PlaylistHeader({ playlist }) {
       <div className="flex flex-col justify-between flex-1">
         <div>
           <div className="flex items-center gap-2">
-            {playlist.collaborative && (
+            {playlist.is_collaborative && (
               <div className="px-2 py-1 text-xs font-medium rounded-full bg-spotify-purple text-white">
                 Collaborative
               </div>
@@ -91,47 +106,36 @@ export function PlaylistHeader({ playlist }) {
             <div className="text-sm text-muted-foreground">Playlist</div>
           </div>
 
-          <h1 className="mt-2 text-4xl font-bold purple-gradient-text">{playlist.name}</h1>
+          <h1 className="mt-2 text-2xl md:text-4xl font-bold purple-gradient-text">{playlist.name}</h1>
 
-          {playlist.description && <p className="mt-2 text-muted-foreground">{playlist.description}</p>}
-
-          <div className="flex items-center gap-1 mt-4 text-sm">
-            <span className="font-medium">{playlist.owner.display_name}</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">{playlist.tracks.total} tracks</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">{playlist.followers?.total || 0} followers</span>
-          </div>
+          {playlist.description && (
+            <p className="mt-2 text-sm md:text-base text-muted-foreground">{playlist.description}</p>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mt-6">
-          <Button className="bg-spotify-purple hover:bg-spotify-purple-dark text-white">Play</Button>
+        <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-6">
+          <Button className="bg-spotify-purple hover:bg-spotify-purple-dark text-white flex-1 sm:flex-none">
+            Play
+          </Button>
 
           <Button
             variant="outline"
             onClick={() => setIsInviteDialogOpen(true)}
-            className="border-spotify-purple/30 hover:bg-spotify-purple/10"
+            className="border-spotify-purple/30 hover:bg-spotify-purple/10 flex-1 sm:flex-none"
           >
             <Users className="w-4 h-4 mr-2" />
-            Invite
+            <span className="hidden xs:inline">Invite</span>
+            <span className="xs:hidden">+</span>
           </Button>
 
           <Button
             variant="outline"
             onClick={handleCopyLink}
-            className="border-spotify-purple/30 hover:bg-spotify-purple/10"
+            className="border-spotify-purple/30 hover:bg-spotify-purple/10 flex-1 sm:flex-none"
           >
             <LinkIcon className="w-4 h-4 mr-2" />
-            Copy Link
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={handleOpenInSpotify}
-            className="border-spotify-purple/30 hover:bg-spotify-purple/10"
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Open in Spotify
+            <span className="hidden xs:inline">Copy Link</span>
+            <span className="xs:hidden">Link</span>
           </Button>
 
           <DropdownMenu>
@@ -151,7 +155,7 @@ export function PlaylistHeader({ playlist }) {
       </div>
 
       <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px] w-[95vw] border-spotify-purple/30 bg-background">
           <DialogHeader>
             <DialogTitle>Invite to Playlist</DialogTitle>
             <DialogDescription>Invite someone to collaborate on "{playlist.name}"</DialogDescription>
@@ -171,16 +175,16 @@ export function PlaylistHeader({ playlist }) {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => setIsInviteDialogOpen(false)}
-              className="border-spotify-purple/30 hover:bg-spotify-purple/10"
+              className="sm:w-auto w-full border-spotify-purple/30 hover:bg-spotify-purple/10"
             >
               Cancel
             </Button>
             <Button
-              className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
+              className="bg-spotify-purple hover:bg-spotify-purple-dark text-white sm:w-auto w-full"
               onClick={handleInvite}
               disabled={isInviting}
             >

@@ -42,7 +42,7 @@ export function MobileNav() {
   ]
 
   return (
-    <div className="md:hidden">
+    <div className="md:hidden mobile-safe-top">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Music className="w-6 h-6 text-spotify-purple" />

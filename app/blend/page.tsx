@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/components/ui/use-toast"
-import { createBlendPlaylist } from "@/lib/db-actions"
 import { Music, Shuffle, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -30,7 +29,24 @@ export default function BlendPage() {
     setIsCreating(true)
 
     try {
-      const result = await createBlendPlaylist(playlistName, participantCount, "")
+      const response = await fetch("/api/blends", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: playlistName,
+          maxParticipants: participantCount,
+          description: `A collaborative blend playlist with up to ${participantCount} participants`,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to create blend playlist")
+      }
+
+      const result = await response.json()
 
       toast({
         title: "Blend playlist created!",
@@ -51,8 +67,8 @@ export default function BlendPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-10">
-      <h1 className="mb-8 text-4xl font-bold text-center purple-gradient-text">Create a Blend</h1>
+    <div className="container max-w-4xl py-6 md:py-10 px-4 sm:px-6">
+      <h1 className="mb-6 md:mb-8 text-3xl md:text-4xl font-bold text-center purple-gradient-text">Create a Blend</h1>
 
       <Card className="animated-border">
         <CardHeader>

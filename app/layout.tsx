@@ -7,6 +7,7 @@ import "./globals.css"
 export const metadata = {
   title: "Spotify Blend - Collaborative Playlist Creator",
   description: "Create and manage collaborative Spotify playlists with friends or random collaborators",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
     generator: 'v0.dev'
 }
 

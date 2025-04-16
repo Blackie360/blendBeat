@@ -43,6 +43,20 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Improve touch targets on mobile */
+  @media (max-width: 640px) {
+    button,
+    a {
+      @apply min-h-[44px] min-w-[44px];
+    }
+
+    input,
+    select,
+    textarea {
+      @apply min-h-[44px];
+    }
+  }
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -123,4 +137,35 @@
 .playlist-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 25px -5px rgba(109, 40, 217, 0.25);
+}
+
+/* Mobile-specific styles */
+@media (max-width: 640px) {
+  .purple-gradient-text {
+    font-size: 1.5rem;
+  }
+
+  .playlist-card:hover {
+    transform: none;
+  }
+
+  .hover-scale:hover {
+    transform: none;
+  }
+
+  /* Improve tap targets */
+  .tap-target {
+    @apply p-2;
+  }
+}
+
+/* Safe area insets for mobile devices */
+@supports (padding: max(0px)) {
+  .mobile-safe-bottom {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .mobile-safe-top {
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
 }

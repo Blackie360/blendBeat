@@ -14,8 +14,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { Plus } from "lucide-react"
-import { createPlaylist } from "@/lib/spotify-api"
 import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { v4 as uuidv4 } from "uuid"
 
 export function CreatePlaylistButton() {
   const [open, setOpen] = useState(false)
@@ -24,6 +25,7 @@ export function CreatePlaylistButton() {
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
   const { data: session } = useSession()
+  const router = useRouter()
 
   const handleCreate = async () => {
     if (!name) {
@@ -40,13 +42,38 @@ export function CreatePlaylistButton() {
       if (!session?.user?.id) {
         throw new Error("User ID not found")
       }
-      await createPlaylist(session.user.id, name, description)
+
+      // Create a unique ID for the playlist
+      const playlistId = uuidv4()
+
+      // Create the playlist in the database
+      const response = await fetch("/api/playlists", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: playlistId,
+          name,
+          description,
+          owner_id: session.user.id,
+          is_collaborative: false,
+          is_public: true,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to create playlist")
+      }
 
       toast({
         title: "Playlist created!",
         description: "Your new playlist has been created.",
       })
 
+      // Refresh the page to show the new playlist
+      router.refresh()
       setOpen(false)
       setName("")
       setDescription("")
@@ -63,41 +90,41 @@ export function CreatePlaylistButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} disabled={isCreating} className="hover-scale">
+      <Button onClick={() => setOpen(true)} disabled={isCreating} className="hover-scale w-full md:w-auto">
         <Plus className="w-4 h-4 mr-2" />
         New Playlist
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="border-spotify-purple/30 bg-gradient-to-b from-background to-muted">
+        <DialogContent className="border-spotify-purple/30 bg-gradient-to-b from-background to-muted sm:max-w-[425px] w-[95vw]">
           <DialogHeader>
             <DialogTitle className="purple-gradient-text">Create Playlist</DialogTitle>
             <DialogDescription>Create a new playlist with your own custom name and description.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+            <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-2 md:gap-4">
+              <Label htmlFor="name" className="md:text-right">
                 Name
               </Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="md:col-span-3" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
+            <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-2 md:gap-4">
+              <Label htmlFor="description" className="md:text-right">
                 Description
               </Label>
               <Input
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="col-span-3"
+                className="md:col-span-3"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="sm:w-auto w-full">
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={isCreating} className="purple-glow">
+            <Button onClick={handleCreate} disabled={isCreating} className="purple-glow sm:w-auto w-full">
               {isCreating ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>

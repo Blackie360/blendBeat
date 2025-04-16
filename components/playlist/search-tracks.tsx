@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import { Search, Plus } from "lucide-react"
 import Image from "next/image"
-import { searchTracks, addTrackToPlaylist, saveTrack } from "@/lib/db-actions"
 import { v4 as uuidv4 } from "uuid"
+import { useRouter } from "next/navigation"
 
 export function SearchTracks({ playlistId }) {
   const [query, setQuery] = useState("")
@@ -15,6 +15,7 @@ export function SearchTracks({ playlistId }) {
   const [isSearching, setIsSearching] = useState(false)
   const [isAdding, setIsAdding] = useState({})
   const { toast } = useToast()
+  const router = useRouter()
 
   const handleSearch = async (e) => {
     e.preventDefault()
@@ -24,8 +25,14 @@ export function SearchTracks({ playlistId }) {
     setIsSearching(true)
 
     try {
-      const tracks = await searchTracks(query)
-      setResults(tracks)
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+
+      if (!response.ok) {
+        throw new Error("Failed to search tracks")
+      }
+
+      const data = await response.json()
+      setResults(data)
     } catch (error) {
       toast({
         title: "Search failed",
@@ -41,21 +48,32 @@ export function SearchTracks({ playlistId }) {
     setIsAdding((prev) => ({ ...prev, [track.id]: true }))
 
     try {
-      // First save the track to our database
+      // Generate a unique ID for the track
       const trackId = uuidv4()
-      await saveTrack({
-        id: trackId,
-        name: track.name,
-        artist: track.artists.map((a) => a.name).join(", "),
-        album: track.album?.name,
-        duration_ms: track.duration_ms,
-        spotify_uri: track.uri,
-        image_url: track.album?.images?.[0]?.url,
-        preview_url: track.preview_url,
+
+      // Save the track to our database
+      const response = await fetch("/api/tracks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: trackId,
+          name: track.name,
+          artist: track.artists.map((a) => a.name).join(", "),
+          album: track.album?.name,
+          duration_ms: track.duration_ms,
+          spotify_uri: track.uri,
+          image_url: track.album?.images?.[0]?.url,
+          preview_url: track.preview_url,
+          playlistId: playlistId,
+        }),
       })
 
-      // Then add it to the playlist
-      await addTrackToPlaylist(playlistId, trackId, "")
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to add track")
+      }
 
       toast({
         title: "Track added",
@@ -64,6 +82,9 @@ export function SearchTracks({ playlistId }) {
 
       // Remove the track from results
       setResults(results.filter((t) => t.id !== track.id))
+
+      // Refresh the page to show the new track
+      router.refresh()
     } catch (error) {
       toast({
         title: "Failed to add track",
@@ -77,12 +98,12 @@ export function SearchTracks({ playlistId }) {
 
   return (
     <div className="mb-6">
-      <form onSubmit={handleSearch} className="flex gap-2 mb-4">
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 mb-4">
         <Input
           placeholder="Search for tracks..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="border-spotify-purple/30 focus-visible:ring-spotify-purple"
+          className="border-spotify-purple/30 focus-visible:ring-spotify-purple flex-1"
         />
         <Button
           type="submit"
@@ -99,7 +120,7 @@ export function SearchTracks({ playlistId }) {
           {results.map((track) => (
             <div
               key={track.id}
-              className="grid grid-cols-[auto_1fr_auto] items-center gap-4 p-3 hover:bg-spotify-purple/10 transition-colors"
+              className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3 hover:bg-spotify-purple/10 transition-colors"
             >
               <div className="relative w-10 h-10 flex-shrink-0">
                 {track.album?.images?.[0]?.url ? (
@@ -117,8 +138,8 @@ export function SearchTracks({ playlistId }) {
               </div>
 
               <div className="min-w-0">
-                <div className="font-medium truncate">{track.name}</div>
-                <div className="text-sm text-muted-foreground truncate">
+                <div className="font-medium truncate text-sm sm:text-base">{track.name}</div>
+                <div className="text-xs sm:text-sm text-muted-foreground truncate">
                   {track.artists.map((artist) => artist.name).join(", ")}
                 </div>
               </div>
@@ -130,7 +151,7 @@ export function SearchTracks({ playlistId }) {
                 className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
               >
                 <Plus className="w-4 h-4 mr-1" />
-                {isAdding[track.id] ? "Adding..." : "Add"}
+                <span className="hidden xs:inline">{isAdding[track.id] ? "Adding..." : "Add"}</span>
               </Button>
             </div>
           ))}
