@@ -7,14 +7,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/components/ui/use-toast"
-import { createBlendPlaylist } from "@/lib/actions"
+import { createBlendPlaylist } from "@/lib/db-actions"
 import { Music, Shuffle, Users } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function BlendPage() {
   const [participantCount, setParticipantCount] = useState(3)
   const [playlistName, setPlaylistName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
+  const router = useRouter()
 
   const handleCreateBlend = async () => {
     if (!playlistName) {
@@ -28,15 +30,15 @@ export default function BlendPage() {
     setIsCreating(true)
 
     try {
-      const result = await createBlendPlaylist(playlistName, participantCount)
+      const result = await createBlendPlaylist(playlistName, participantCount, "")
 
       toast({
         title: "Blend playlist created!",
-        description: "Your collaborative playlist has been created with random participants.",
+        description: "Your collaborative playlist has been created and is ready for participants.",
       })
 
       // Redirect to the new playlist
-      window.location.href = `/playlist/${result.playlistId}`
+      router.push(`/playlist/${result.playlistId}`)
     } catch (error) {
       toast({
         title: "Failed to create blend playlist",

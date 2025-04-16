@@ -1,6 +1,7 @@
 import NextAuth from "next-auth"
 import SpotifyProvider from "next-auth/providers/spotify"
 import type { NextAuthOptions } from "next-auth"
+import { createOrUpdateUser } from "./db-actions"
 
 const scopes = [
   "user-read-email",
@@ -24,11 +25,17 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at
+
+        // Store Spotify ID in the token
+        if (profile) {
+          token.id = profile.id
+          token.spotifyId = profile.id
+        }
       }
 
       // Return the previous token if the access token has not expired
@@ -48,16 +55,41 @@ export const authOptions: NextAuthOptions = {
       try {
         session.accessToken = token.accessToken
         session.error = token.error
+
+        // Add Spotify ID and user ID to the session
+        if (session.user) {
+          session.user.id = token.id as string
+          session.user.spotifyId = token.spotifyId as string
+        }
+
         return session
       } catch (error) {
         console.error("Error in session callback", error)
         return session
       }
     },
+    async signIn({ user, account, profile }) {
+      try {
+        if (user && account && profile) {
+          // Store user in our database
+          await createOrUpdateUser({
+            id: profile.id as string,
+            email: user.email as string,
+            name: user.name as string,
+            image: user.image as string,
+            spotify_id: profile.id as string,
+          })
+        }
+        return true
+      } catch (error) {
+        console.error("Error in signIn callback", error)
+        return true // Still allow sign in even if DB storage fails
+      }
+    },
   },
   pages: {
     signIn: "/login",
-    error: "/auth-error", // Add an error page
+    error: "/auth-error",
   },
   session: {
     strategy: "jwt",

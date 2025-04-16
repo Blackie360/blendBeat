@@ -2,9 +2,9 @@ import { redirect } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { PlaylistGrid } from "@/components/dashboard/playlist-grid"
 import { CreatePlaylistButton } from "@/components/dashboard/create-playlist-button"
-import { getUserPlaylists } from "@/lib/spotify-api"
 import { MobileNav } from "@/components/dashboard/mobile-nav"
 import { cookies } from "next/headers"
+import { getCurrentUser, getUserPlaylists } from "@/lib/db-actions"
 
 export default async function DashboardPage() {
   // Check for session cookie directly
@@ -17,21 +17,19 @@ export default async function DashboardPage() {
   }
 
   try {
-    // Import auth dynamically to prevent issues
-    const { auth } = await import("@/lib/auth")
-    const session = await auth()
+    const user = await getCurrentUser()
 
-    if (!session || !session.accessToken) {
+    if (!user) {
       redirect("/login")
     }
 
-    const playlists = await getUserPlaylists(session.accessToken)
+    const playlists = await getUserPlaylists(user.id)
 
     return (
       <div>
         <MobileNav />
         <div className="container py-10">
-          <DashboardHeader user={session.user} />
+          <DashboardHeader user={user} />
 
           <div className="flex items-center justify-between my-8">
             <h2 className="text-3xl font-bold">Your Playlists</h2>

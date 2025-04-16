@@ -1,13 +1,19 @@
 "use server"
 
-import { getServerSession } from "next-auth"
-import { authOptions } from "./auth"
 import { revalidatePath } from "next/cache"
+import {
+  getCurrentUser,
+  saveTrack,
+  addTrackToPlaylist,
+  removeTrackFromPlaylist,
+  createBlendPlaylist,
+} from "./db-actions"
+import { getSession } from "./get-session"
 
 const SPOTIFY_API = "https://api.spotify.com/v1"
 
 async function fetchSpotifyAPI(endpoint, options = {}) {
-  const session = await getServerSession(authOptions)
+  const session = await getSession()
 
   if (!session?.accessToken) {
     throw new Error("Not authenticated")
@@ -42,7 +48,33 @@ export async function searchTracks(query) {
   return data.tracks.items
 }
 
-export async function addTrackToPlaylist(playlistId, trackUri) {
+export async function addTrackToPlaylistAction(playlistId, trackUri) {
+  const user = await getCurrentUser()
+
+  if (!user) {
+    throw new Error("Not authenticated")
+  }
+
+  // First, get track details from Spotify
+  const trackId = trackUri.split(":")[2]
+  const trackData = await fetchSpotifyAPI(`/tracks/${trackId}`)
+
+  // Save track to our database
+  const savedTrack = await saveTrack({
+    id: trackData.id,
+    name: trackData.name,
+    artist: trackData.artists.map((a) => a.name).join(", "),
+    album: trackData.album?.name,
+    duration_ms: trackData.duration_ms,
+    spotify_uri: trackData.uri,
+    image_url: trackData.album?.images?.[0]?.url,
+    preview_url: trackData.preview_url,
+  })
+
+  // Add track to playlist in our database
+  await addTrackToPlaylist(playlistId, savedTrack.id, user.id)
+
+  // Also add to Spotify
   await fetchSpotifyAPI(`/playlists/${playlistId}/tracks`, {
     method: "POST",
     body: JSON.stringify({
@@ -53,7 +85,17 @@ export async function addTrackToPlaylist(playlistId, trackUri) {
   revalidatePath(`/playlist/${playlistId}`)
 }
 
-export async function removeTrackFromPlaylist(playlistId, trackUri) {
+export async function removeTrackFromPlaylistAction(playlistId, trackUri) {
+  const user = await getCurrentUser()
+
+  if (!user) {
+    throw new Error("Not authenticated")
+  }
+
+  // Remove from our database
+  await removeTrackFromPlaylist(playlistId, trackUri)
+
+  // Also remove from Spotify
   await fetchSpotifyAPI(`/playlists/${playlistId}/tracks`, {
     method: "DELETE",
     body: JSON.stringify({
@@ -65,7 +107,7 @@ export async function removeTrackFromPlaylist(playlistId, trackUri) {
 }
 
 export async function getPlaylistCollaborators(playlistId) {
-  const session = await getServerSession(authOptions)
+  const session = await getSession()
 
   if (!session) {
     throw new Error("Not authenticated")
@@ -112,33 +154,18 @@ export async function inviteToPlaylist(playlistId, email) {
   return { success: true }
 }
 
-export async function createBlendPlaylist(name, participantCount) {
-  const session = await getServerSession(authOptions)
+export async function createBlendPlaylistAction(name, participantCount) {
+  const user = await getCurrentUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
-  // Get user profile
-  const userProfile = await fetchSpotifyAPI("/me")
-
-  // Create a new collaborative playlist
-  const playlist = await fetchSpotifyAPI(`/users/${userProfile.id}/playlists`, {
-    method: "POST",
-    body: JSON.stringify({
-      name: `${name} (Blend)`,
-      description: `A collaborative blend playlist with ${participantCount} participants`,
-      public: true,
-      collaborative: true,
-    }),
-  })
-
-  // In a real app, you would:
-  // 1. Store the blend in your database
-  // 2. Match with random users based on music taste
-  // 3. Send invitations to those users
+  // Create blend in our database
+  const result = await createBlendPlaylist(name, participantCount, user.id)
 
   revalidatePath("/dashboard")
+  revalidatePath("/blend")
 
-  return { playlistId: playlist.id }
+  return result
 }
