@@ -21,7 +21,7 @@ export async function executeQuery(query: string, params: any[] = []) {
   }
 }
 
-// Create a new blend
+// Create a new blend (now representing a collaborative playlist)
 export async function createBlend({
   name,
   maxParticipants,
@@ -34,7 +34,7 @@ export async function createBlend({
   playlistId?: string | null
 }) {
   try {
-    console.log("Creating blend in database:", { name, maxParticipants, creatorId, playlistId })
+    console.log("Creating collaborative playlist in database:", { name, maxParticipants, creatorId, playlistId })
 
     // Start a transaction
     await sql.query("BEGIN")
@@ -49,10 +49,10 @@ export async function createBlend({
       const blend = await sql.query(query, [name, playlistId, maxParticipants])
 
       if (!blend.rows[0]) {
-        throw new Error("Failed to create blend")
+        throw new Error("Failed to create collaborative playlist")
       }
 
-      console.log("Blend created:", blend.rows[0])
+      console.log("Collaborative playlist created:", blend.rows[0])
 
       // Add the creator as a participant
       const participantQuery = `
@@ -73,7 +73,7 @@ export async function createBlend({
       throw error
     }
   } catch (error) {
-    console.error("Error creating blend:", error)
+    console.error("Error creating collaborative playlist:", error)
     throw error
   }
 }
@@ -90,7 +90,7 @@ export async function updateBlendPlaylist(blendId: number, playlistId: string) {
     const result = await sql.query(query, [playlistId, blendId])
     return result.rows[0]
   } catch (error) {
-    console.error("Error updating blend playlist:", error)
+    console.error("Error updating collaborative playlist:", error)
     throw error
   }
 }
@@ -109,11 +109,11 @@ export async function addBlendParticipant(blendId: number, userId: string) {
     const blend = await sql.query(blendQuery, [blendId])
 
     if (!blend.rows[0]) {
-      throw new Error("Blend not found")
+      throw new Error("Collaborative playlist not found")
     }
 
     if (blend.rows[0].current_participants >= blend.rows[0].max_participants) {
-      throw new Error("This blend is already full")
+      throw new Error("This collaborative playlist is already full")
     }
 
     // Check if the user is already a participant
@@ -136,7 +136,7 @@ export async function addBlendParticipant(blendId: number, userId: string) {
     const result = await sql.query(query, [blendId, userId])
     return result.rows[0]
   } catch (error) {
-    console.error("Error adding blend participant:", error)
+    console.error("Error adding participant:", error)
     throw error
   }
 }
@@ -152,7 +152,7 @@ export async function removeBlendParticipant(blendId: number, userId: string) {
     const result = await sql.query(query, [blendId, userId])
     return result.rows[0]
   } catch (error) {
-    console.error("Error removing blend participant:", error)
+    console.error("Error removing participant:", error)
     throw error
   }
 }
@@ -192,7 +192,7 @@ export async function deleteBlend(blendId: number) {
       throw error
     }
   } catch (error) {
-    console.error("Error deleting blend:", error)
+    console.error("Error deleting collaborative playlist:", error)
     throw error
   }
 }
@@ -213,7 +213,7 @@ export async function getBlendById(blendId: number) {
     const result = await sql.query(query, [blendId])
     return result.rows[0] || null
   } catch (error) {
-    console.error("Error getting blend by ID:", error)
+    console.error("Error getting collaborative playlist by ID:", error)
     return null
   }
 }
@@ -234,7 +234,7 @@ export async function getBlendsByUserId(userId: string) {
     const result = await sql.query(query, [userId])
     return result.rows
   } catch (error) {
-    console.error("Error getting blends by user ID:", error)
+    console.error("Error getting collaborative playlists by user ID:", error)
     return []
   }
 }
@@ -252,7 +252,7 @@ export async function getBlendParticipants(blendId: number) {
     const result = await sql.query(query, [blendId])
     return result.rows
   } catch (error) {
-    console.error("Error getting blend participants:", error)
+    console.error("Error getting participants:", error)
     return []
   }
 }
@@ -274,7 +274,7 @@ export async function getActiveBlends(limit = 10, offset = 0) {
     const result = await sql.query(query, [limit, offset])
     return result.rows
   } catch (error) {
-    console.error("Error getting active blends:", error)
+    console.error("Error getting active collaborative playlists:", error)
     return []
   }
 }

@@ -19,7 +19,7 @@ interface BlendListProps {
 
 export function BlendList({ blends }: BlendListProps) {
   if (blends.length === 0) {
-    return <div className="text-center py-8 text-gray-500">You haven't created any blends yet.</div>
+    return <div className="text-center py-8 text-gray-500">You haven't created any collaborative playlists yet.</div>
   }
 
   return (

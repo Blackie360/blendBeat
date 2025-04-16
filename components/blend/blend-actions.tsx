@@ -44,15 +44,15 @@ export function BlendActions({ blend, isParticipant, isCreator }: BlendActionsPr
       } else {
         toast({
           title: "Success",
-          description: "You have joined the blend!",
+          description: "You have joined the collaborative playlist!",
         })
         router.refresh()
       }
     } catch (error) {
-      console.error("Error joining blend:", error)
+      console.error("Error joining playlist:", error)
       toast({
         title: "Error",
-        description: "Failed to join blend. Please try again.",
+        description: "Failed to join playlist. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -73,15 +73,15 @@ export function BlendActions({ blend, isParticipant, isCreator }: BlendActionsPr
       } else {
         toast({
           title: "Success",
-          description: "You have left the blend.",
+          description: "You have left the collaborative playlist.",
         })
         router.refresh()
       }
     } catch (error) {
-      console.error("Error leaving blend:", error)
+      console.error("Error leaving playlist:", error)
       toast({
         title: "Error",
-        description: "Failed to leave blend. Please try again.",
+        description: "Failed to leave playlist. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -102,15 +102,15 @@ export function BlendActions({ blend, isParticipant, isCreator }: BlendActionsPr
       } else {
         toast({
           title: "Success",
-          description: "Blend deleted successfully.",
+          description: "Collaborative playlist deleted successfully.",
         })
         router.push("/blend")
       }
     } catch (error) {
-      console.error("Error deleting blend:", error)
+      console.error("Error deleting playlist:", error)
       toast({
         title: "Error",
-        description: "Failed to delete blend. Please try again.",
+        description: "Failed to delete playlist. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -122,13 +122,13 @@ export function BlendActions({ blend, isParticipant, isCreator }: BlendActionsPr
     <div className="flex flex-wrap gap-2">
       {!isParticipant && (
         <Button onClick={handleJoin} disabled={isLoading}>
-          Join Blend
+          Join Playlist
         </Button>
       )}
 
       {isParticipant && !isCreator && (
         <Button variant="outline" onClick={handleLeave} disabled={isLoading}>
-          Leave Blend
+          Leave Playlist
         </Button>
       )}
 
@@ -136,15 +136,15 @@ export function BlendActions({ blend, isParticipant, isCreator }: BlendActionsPr
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" disabled={isLoading}>
-              Delete Blend
+              Delete Playlist
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the blend "{blend.name}" and remove it from
-                our servers.
+                This action cannot be undone. This will permanently delete the collaborative playlist "{blend.name}" and
+                remove it from our servers.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -162,11 +162,11 @@ export function BlendActions({ blend, isParticipant, isCreator }: BlendActionsPr
             navigator.clipboard.writeText(`${window.location.origin}/blend/join/${blend.id}`)
             toast({
               title: "Link Copied",
-              description: "Share this link with friends to invite them to your blend!",
+              description: "Share this link with friends to invite them to your collaborative playlist!",
             })
           }}
         >
-          Share Blend
+          Share Playlist
         </Button>
       )}
     </div>

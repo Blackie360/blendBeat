@@ -61,7 +61,7 @@ export default async function BlendDetailPage({
       <div className="grid gap-8 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Blend Details</CardTitle>
+            <CardTitle>Collaborative Playlist Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
@@ -136,7 +136,7 @@ export default async function BlendDetailPage({
         <div className="mt-8">
           <Card>
             <CardHeader>
-              <CardTitle>Add Tracks to Blend</CardTitle>
+              <CardTitle>Add Tracks to Playlist</CardTitle>
             </CardHeader>
             <CardContent>
               <TrackSearch blendId={blendId} />
@@ -146,7 +146,7 @@ export default async function BlendDetailPage({
           <div className="mt-8">
             <Card>
               <CardHeader>
-                <CardTitle>Blend Tracks</CardTitle>
+                <CardTitle>Playlist Tracks</CardTitle>
               </CardHeader>
               <CardContent>
                 <BlendTracks tracks={playlistTracks} />
