@@ -110,16 +110,12 @@ export async function getUserTopArtists(userId?: string, timeRange = "medium_ter
   }
 }
 
-// Create a new Spotify playlist
-export async function createSpotifyPlaylist(
-  userId: string,
-  name: string,
-  description: string,
-  isCollaborative = false,
-) {
+// Update the createSpotifyPlaylist function to clarify it's creating a collaborative playlist, not a Blend
+export async function createSpotifyPlaylist(userId: string, name: string, description = "", isCollaborative = false) {
   try {
     const accessToken = await getAccessToken(userId)
 
+    // Create a regular collaborative playlist instead of trying to create a Blend
     const response = await fetch(`${SPOTIFY_API_URL}/users/${userId}/playlists`, {
       method: "POST",
       headers: {
@@ -128,9 +124,9 @@ export async function createSpotifyPlaylist(
       },
       body: JSON.stringify({
         name,
-        description,
-        public: false,
-        collaborative: isCollaborative,
+        description: description || `A collaborative playlist created with our app`,
+        public: false, // Keep it private for better control
+        collaborative: isCollaborative, // Make it collaborative so friends can add songs
       }),
     })
 

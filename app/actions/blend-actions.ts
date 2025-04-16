@@ -1,19 +1,13 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import {
-  createBlend,
-  updateBlendPlaylist as updateBlendPlaylistDb,
-  addBlendParticipant,
-  removeBlendParticipant,
-  deleteBlend,
-  getBlendById,
-} from "@/lib/db"
+import { createBlend, addBlendParticipant, removeBlendParticipant, deleteBlend, getBlendById } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { createSpotifyPlaylist, addTracksToPlaylist } from "@/lib/spotify-service"
+import { createSpotifyPlaylist, addTracksToPlaylist, getUserProfile } from "@/lib/spotify-service"
 import { sql } from "@vercel/postgres"
 
+// Update the createNewBlend function to handle the Spotify API limitation
 export async function createNewBlend(formData: FormData) {
   try {
     const session = await getServerSession(authOptions)
@@ -32,37 +26,39 @@ export async function createNewBlend(formData: FormData) {
     console.log("Max participants:", maxParticipants)
     console.log("Creator ID:", session.user.id)
 
-    // Create the blend in the database
-    const blend = await createBlend({
-      name,
-      maxParticipants,
-      creatorId: session.user.id,
-    })
-
-    console.log("Blend created:", blend)
-
-    // Create a Spotify playlist for this blend
-    const playlistName = `${name} - Spotify Blend`
-    const playlistDescription = `A collaborative playlist created with Spotify Blend`
-
+    // Create a regular collaborative playlist in Spotify
+    let spotifyPlaylistId = null
     try {
+      // Get the user's Spotify profile to get their Spotify user ID
+      const userProfile = await getUserProfile(session.accessToken)
+
+      // Create a collaborative playlist (not a true Spotify Blend)
+      const playlistName = `${name} (Collaborative Mix)`
+      const playlistDescription = `A collaborative playlist created with our app. Add your favorite tracks!`
+
       const playlist = await createSpotifyPlaylist(
-        session.user.id,
+        userProfile.id,
         playlistName,
         playlistDescription,
         true, // collaborative
       )
 
-      console.log("Spotify playlist created:", playlist)
-
-      // Update the blend with the playlist ID
-      if (playlist?.id) {
-        await updateBlendPlaylistDb(blend.id, playlist.id)
-      }
+      console.log("Spotify collaborative playlist created:", playlist)
+      spotifyPlaylistId = playlist.id
     } catch (error) {
       console.error("Error creating Spotify playlist:", error)
-      // Continue even if playlist creation fails
+      // Continue even if Spotify playlist creation fails
     }
+
+    // Create the blend in our database
+    const blend = await createBlend({
+      name,
+      maxParticipants,
+      creatorId: session.user.id,
+      playlistId: spotifyPlaylistId,
+    })
+
+    console.log("Blend created in database:", blend)
 
     revalidatePath("/dashboard")
     revalidatePath("/blend")

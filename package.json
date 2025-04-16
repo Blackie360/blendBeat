@@ -73,8 +73,8 @@
     "uuid": "latest",
     "framer-motion": "latest",
     "@neondatabase/serverless": "latest",
-    "@vercel/postgres": "latest",
-    "react-icons": "latest"
+    "react-icons": "latest",
+    "@vercel/postgres": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
