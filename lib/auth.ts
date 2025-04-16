@@ -1,6 +1,7 @@
-import NextAuth from "next-auth"
-import SpotifyProvider from "next-auth/providers/spotify"
 import type { NextAuthOptions } from "next-auth"
+import SpotifyProvider from "next-auth/providers/spotify"
+import { sql } from "@neondatabase/serverless"
+import { getServerSession } from "next-auth/next"
 
 const scopes = [
   "user-read-email",
@@ -29,116 +30,79 @@ export const authOptions: NextAuthOptions = {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at
-
-        if (profile) {
-          token.id = profile.id
-          token.spotifyId = profile.id
-        }
+        token.id = profile?.id
       }
-
-      if (token.expiresAt && Date.now() < token.expiresAt * 1000) {
-        return token
-      }
-
-      try {
-        return await refreshAccessToken(token)
-      } catch (error) {
-        console.error("Error refreshing access token", error)
-        return { ...token, error: "RefreshAccessTokenError" }
-      }
+      return token
     },
     async session({ session, token }) {
-      try {
-        session.accessToken = token.accessToken
-        session.error = token.error
-
-        if (session.user) {
-          session.user.id = token.id as string
-          session.user.spotifyId = token.spotifyId as string
-        }
-
-        return session
-      } catch (error) {
-        console.error("Error in session callback", error)
-        return session
+      if (session.user) {
+        session.user.id = token.id as string
+        session.accessToken = token.accessToken as string
+        session.refreshToken = token.refreshToken as string
+        session.expiresAt = token.expiresAt as number
       }
+      return session
     },
     async signIn({ user, account, profile }) {
+      if (!user.email) return false
+
       try {
-        if (user && account && profile) {
-          //console.log("signIn callback", { user, account, profile })
+        // Check if user exists
+        const existingUser = await sql`
+          SELECT * FROM users WHERE id = ${user.id || profile?.id}
+        `
+
+        if (existingUser.rows.length === 0) {
+          // Create new user
+          await sql`
+            INSERT INTO users (id, email, name, image, spotify_id, created_at, updated_at)
+            VALUES (
+              ${user.id || profile?.id},
+              ${user.email},
+              ${user.name},
+              ${user.image},
+              ${profile?.id},
+              CURRENT_TIMESTAMP,
+              CURRENT_TIMESTAMP
+            )
+          `
+          console.log("Created new user:", user.email)
+        } else {
+          // Update existing user
+          await sql`
+            UPDATE users
+            SET 
+              email = ${user.email},
+              name = ${user.name},
+              image = ${user.image},
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${user.id || profile?.id}
+          `
+          console.log("Updated existing user:", user.email)
         }
+
         return true
       } catch (error) {
-        console.error("Error in signIn callback", error)
+        console.error("Error saving user to database:", error)
+        // Still allow sign in even if database save fails
         return true
       }
     },
   },
   pages: {
     signIn: "/login",
-    error: "/auth-error",
   },
   session: {
     strategy: "jwt",
   },
-  debug: process.env.NODE_ENV === "development",
+  secret: process.env.NEXTAUTH_SECRET,
 }
 
-async function refreshAccessToken(token) {
-  try {
-    const response = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${Buffer.from(
-          `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`,
-        ).toString("base64")}`,
-      },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: token.refreshToken,
-      }),
-    })
+// Export the auth function
+export const auth = async () => await getServerSession(authOptions)
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw data
-    }
-
-    return {
-      ...token,
-      accessToken: data.access_token,
-      expiresAt: Math.floor(Date.now() / 1000 + data.expires_in),
-    }
-  } catch (error) {
-    console.error("Error refreshing token:", error)
-    return {
-      ...token,
-      error: "RefreshAccessTokenError",
-    }
-  }
-}
-
-// For NextAuth.js v4
-export default NextAuth(authOptions)
-
-// For compatibility with different versions
-export const auth = () => {
-  try {
-    return NextAuth(authOptions).auth()
-  } catch (error) {
-    console.error("Auth function error:", error)
-    return null
-  }
-}
-
-export async function getSession() {
-  try {
-    return await getServerSession(authOptions)
-  } catch (error) {
-    console.error("Error getting session:", error)
-    return null
-  }
+// Export the getSession function
+export const getSession = async () => {
+  const session = await getServerSession(authOptions)
+  return session
 }

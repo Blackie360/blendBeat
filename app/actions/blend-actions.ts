@@ -5,12 +5,13 @@ import { createBlend } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { createSpotifyPlaylist } from "@/lib/spotify-service"
-import { sql } from "@vercel/postgres"
+import { sql } from "@neondatabase/serverless"
 
 export async function createNewBlend(formData: FormData) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
+      console.error("No user session found")
       return { error: "You must be logged in to create a blend" }
     }
 
@@ -64,22 +65,20 @@ export async function createNewBlend(formData: FormData) {
     return { success: true, blendId: blend.id }
   } catch (error) {
     console.error("Error creating blend:", error)
-    return { error: "Failed to create blend" }
+    return { error: "Failed to create blend. Please try again." }
   }
 }
 
 async function updateBlendPlaylist(blendId: number, playlistId: string) {
-  const query = `
-    UPDATE blends
-    SET playlist_id = $1
-    WHERE id = $2
-    RETURNING *
-  `
-
   try {
-    const result = await sql<any[]>`${query} ${playlistId} ${blendId}`
-    console.log("Blend updated with playlist ID:", result[0])
-    return result[0]
+    const result = await sql`
+      UPDATE blends
+      SET playlist_id = ${playlistId}
+      WHERE id = ${blendId}
+      RETURNING *
+    `
+    console.log("Blend updated with playlist ID:", result.rows[0])
+    return result.rows[0]
   } catch (error) {
     console.error("Error updating blend with playlist ID:", error)
     throw error
