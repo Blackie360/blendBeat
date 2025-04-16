@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
-import { executeQuery } from "@/lib/db"
 import { getSession } from "@/lib/get-session"
 import { joinBlendWithRevalidation } from "@/lib/server-actions"
+import { executeQuery } from "@/lib/db"
+import { followPlaylist } from "@/lib/spotify-api"
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }) {
   try {
     const session = await getSession()
 
@@ -17,13 +18,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ message: "Invalid blend ID" }, { status: 400 })
     }
 
-    // Check if the blend is full
+    // Get the blend and playlist details
     const blendQuery = `
-      SELECT b.*, COUNT(bp.id) as current_participants
+      SELECT b.*, p.id as playlist_id, p.spotify_id
       FROM blends b
-      LEFT JOIN blend_participants bp ON b.id = bp.blend_id
+      JOIN playlists p ON b.playlist_id = p.id
       WHERE b.id = $1
-      GROUP BY b.id
     `
 
     const blend = await executeQuery(blendQuery, [blendId])
@@ -32,32 +32,24 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ message: "Blend not found" }, { status: 404 })
     }
 
-    if (blend[0].current_participants >= blend[0].max_participants) {
-      return NextResponse.json({ message: "This blend is already full" }, { status: 400 })
-    }
-
-    // Check if user is already a participant
-    const checkQuery = `
-      SELECT * FROM blend_participants
-      WHERE blend_id = $1 AND user_id = $2
-    `
-
-    const existingParticipant = await executeQuery(checkQuery, [blendId, session.user.id])
-
-    if (existingParticipant.length > 0) {
-      return NextResponse.json({
-        message: "You are already a participant in this blend",
-        playlistId: blend[0].playlist_id,
-      })
-    }
-
-    // Use the server action to join the blend
+    // Join the blend
     await joinBlendWithRevalidation(blendId, session.user.id)
+
+    // If the playlist has a Spotify ID, make the user follow it
+    if (blend[0].spotify_id && session.accessToken) {
+      try {
+        await followPlaylist(session.accessToken, blend[0].spotify_id)
+      } catch (spotifyError) {
+        console.error("Error following Spotify playlist:", spotifyError)
+        // Continue even if Spotify follow fails
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Successfully joined blend",
       playlistId: blend[0].playlist_id,
+      spotifyPlaylistId: blend[0].spotify_id,
+      message: "Successfully joined the blend",
     })
   } catch (error) {
     console.error("Error joining blend:", error)

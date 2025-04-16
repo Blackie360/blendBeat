@@ -40,6 +40,7 @@ export async function addTrackToPlaylistClient(playlistId: string, track: any) {
         image_url: track.album?.images?.[0]?.url || track.image_url,
         preview_url: track.preview_url,
         playlistId,
+        trackUri: track.uri || track.spotify_uri, // Pass the track URI for Spotify sync
       }),
     })
 
@@ -58,11 +59,14 @@ export async function addTrackToPlaylistClient(playlistId: string, track: any) {
   }
 }
 
-export async function removeTrackFromPlaylistClient(playlistId: string, trackId: string) {
+export async function removeTrackFromPlaylistClient(playlistId: string, trackId: string, trackUri: string) {
   try {
-    const response = await fetch(`/api/tracks?playlistId=${playlistId}&trackId=${trackId}`, {
-      method: "DELETE",
-    })
+    const response = await fetch(
+      `/api/tracks?playlistId=${playlistId}&trackId=${trackId}&trackUri=${encodeURIComponent(trackUri)}`,
+      {
+        method: "DELETE",
+      },
+    )
 
     if (!response.ok) {
       const error = await response.json()

@@ -80,3 +80,131 @@ export async function createPlaylist(userId, name, description = "", isCollabora
     }),
   })
 }
+
+// New function to create a Spotify playlist with direct access token
+export async function createSpotifyPlaylist(accessToken, userId, name, description = "", isCollaborative = false) {
+  const res = await fetch(`${SPOTIFY_API}/users/${userId}/playlists`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      description,
+      public: true,
+      collaborative: isCollaborative,
+    }),
+  })
+
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error.error?.message || "Failed to create Spotify playlist")
+  }
+
+  return res.json()
+}
+
+// Add tracks to a Spotify playlist
+export async function addTracksToSpotifyPlaylist(accessToken, playlistId, trackUris) {
+  if (!Array.isArray(trackUris)) {
+    trackUris = [trackUris]
+  }
+
+  const res = await fetch(`${SPOTIFY_API}/playlists/${playlistId}/tracks`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      uris: trackUris,
+    }),
+  })
+
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error.error?.message || "Failed to add tracks to Spotify playlist")
+  }
+
+  return res.json()
+}
+
+// Remove tracks from a Spotify playlist
+export async function removeTracksFromSpotifyPlaylist(accessToken, playlistId, trackUris) {
+  if (!Array.isArray(trackUris)) {
+    trackUris = [trackUris]
+  }
+
+  const res = await fetch(`${SPOTIFY_API}/playlists/${playlistId}/tracks`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      tracks: trackUris.map((uri) => ({ uri })),
+    }),
+  })
+
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error.error?.message || "Failed to remove tracks from Spotify playlist")
+  }
+
+  return res.json()
+}
+
+// Make a user follow a playlist
+export async function followPlaylist(accessToken, playlistId) {
+  const res = await fetch(`${SPOTIFY_API}/playlists/${playlistId}/followers`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      public: true,
+    }),
+  })
+
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error.error?.message || "Failed to follow playlist")
+  }
+
+  return true
+}
+
+// Make a user unfollow a playlist
+export async function unfollowPlaylist(accessToken, playlistId) {
+  const res = await fetch(`${SPOTIFY_API}/playlists/${playlistId}/followers`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error.error?.message || "Failed to unfollow playlist")
+  }
+
+  return true
+}
+
+// Get Spotify URLs and URIs for a playlist
+export function getSpotifyLinks(playlistId) {
+  return {
+    url: `https://open.spotify.com/playlist/${playlistId}`,
+    uri: `spotify:playlist:${playlistId}`,
+  }
+}
+
+// Get Spotify URLs and URIs for a track
+export function getSpotifyTrackLinks(trackId) {
+  return {
+    url: `https://open.spotify.com/track/${trackId}`,
+    uri: `spotify:track:${trackId}`,
+  }
+}

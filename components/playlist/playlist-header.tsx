@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/components/ui/use-toast"
-import { LinkIcon, MoreHorizontal, Music, Share, Users } from "lucide-react"
+import { LinkIcon, MoreHorizontal, Music, Share, Users, ExternalLink } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
+import { getSpotifyLinks } from "@/lib/spotify-api"
 
 export function PlaylistHeader({ playlist }) {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
@@ -76,6 +77,19 @@ export function PlaylistHeader({ playlist }) {
       title: "Link copied",
       description: "Playlist link copied to clipboard",
     })
+  }
+
+  const openInSpotify = () => {
+    if (playlist.spotify_id) {
+      const { url } = getSpotifyLinks(playlist.spotify_id)
+      window.open(url, "_blank")
+    } else {
+      toast({
+        title: "Not available in Spotify",
+        description: "This playlist is not yet synced with Spotify",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -138,6 +152,18 @@ export function PlaylistHeader({ playlist }) {
             <span className="xs:hidden">Link</span>
           </Button>
 
+          {playlist.spotify_id && (
+            <Button
+              variant="outline"
+              onClick={openInSpotify}
+              className="border-spotify-purple/30 hover:bg-spotify-purple/10 flex-1 sm:flex-none"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              <span className="hidden xs:inline">Open in Spotify</span>
+              <span className="xs:hidden">Spotify</span>
+            </Button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="hover:bg-spotify-purple/10">
@@ -149,6 +175,12 @@ export function PlaylistHeader({ playlist }) {
                 <Share className="w-4 h-4 mr-2" />
                 Share
               </DropdownMenuItem>
+              {playlist.spotify_id && (
+                <DropdownMenuItem onClick={openInSpotify}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open in Spotify
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

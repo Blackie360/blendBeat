@@ -1,38 +1,35 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/components/ui/use-toast"
-import { Clock, MoreHorizontal, Play, Trash } from "lucide-react"
-import { formatDuration } from "@/lib/utils"
-import { motion } from "framer-motion"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { MoreHorizontal, Play, Trash2, ExternalLink } from "lucide-react"
 import { removeTrackFromPlaylistClient } from "@/lib/client-actions"
+import { AnimatePresence, motion } from "framer-motion"
+import { useMobile } from "@/hooks/use-mobile"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { getSpotifyTrackLinks } from "@/lib/spotify-api"
 
 export function TrackList({ tracks, playlistId }) {
+  const [isRemoving, setIsRemoving] = useState<Record<string, boolean>>({})
   const { toast } = useToast()
-  const router = useRouter()
-  const [isRemoving, setIsRemoving] = useState({})
+  const isMobile = useMobile()
 
-  const handleRemoveTrack = async (trackId) => {
+  const handleRemoveTrack = async (trackId: string, trackUri: string) => {
     setIsRemoving((prev) => ({ ...prev, [trackId]: true }))
 
     try {
-      await removeTrackFromPlaylistClient(playlistId, trackId)
+      await removeTrackFromPlaylistClient(playlistId, trackId, trackUri)
 
       toast({
         title: "Track removed",
         description: "The track has been removed from the playlist",
       })
-
-      // Refresh the page to update the track list
-      router.refresh()
     } catch (error) {
       toast({
         title: "Failed to remove track",
-        description: error.message || "An error occurred while removing the track",
+        description: error.message,
         variant: "destructive",
       })
     } finally {
@@ -40,150 +37,167 @@ export function TrackList({ tracks, playlistId }) {
     }
   }
 
+  const handlePlayPreview = (previewUrl: string) => {
+    if (!previewUrl) {
+      toast({
+        title: "Preview not available",
+        description: "This track doesn't have a preview available",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const audio = new Audio(previewUrl)
+    audio.play()
+  }
+
+  const openInSpotify = (trackId: string) => {
+    const { url } = getSpotifyTrackLinks(trackId)
+    window.open(url, "_blank")
+  }
+
   if (!tracks || tracks.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col items-center justify-center p-4 md:p-8 text-center border rounded-lg border-spotify-purple/20 bg-spotify-purple-dark/10"
-      >
-        <p className="text-muted-foreground">This playlist is empty</p>
-        <p className="text-sm text-muted-foreground">Search for tracks to add to this playlist</p>
-      </motion.div>
+      <div className="p-8 text-center border rounded-lg border-dashed border-spotify-purple/30">
+        <h3 className="mb-2 text-lg font-medium">No tracks yet</h3>
+        <p className="text-muted-foreground">Search for tracks above and add them to this playlist.</p>
+      </div>
     )
   }
 
-  // Mobile view for tracks
-  const renderMobileTrack = (track, index) => (
-    <motion.div
-      key={`${track.id}-${index}-mobile`}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="flex flex-col p-3 border-b border-spotify-purple/10 last:border-b-0"
-    >
-      <div className="flex items-center gap-3">
-        <div className="relative flex-shrink-0 w-10 h-10 group">
-          {track.image_url ? (
-            <Image
-              src={track.image_url || "/placeholder.svg"}
-              alt={track.album || track.name}
-              fill
-              className="object-cover rounded"
-            />
-          ) : (
-            <div className="flex items-center justify-center w-full h-full bg-spotify-purple-dark/30 rounded">
-              <Play className="w-4 h-4 text-spotify-purple-light" />
-            </div>
-          )}
-        </div>
+  return (
+    <div className="mt-4">
+      <AnimatePresence>
+        {tracks.map((track) => (
+          <motion.div
+            key={track.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="group"
+          >
+            {isMobile
+              ? renderMobileTrack(track, handleRemoveTrack, handlePlayPreview, openInSpotify, isRemoving)
+              : renderDesktopTrack(track, handleRemoveTrack, handlePlayPreview, openInSpotify, isRemoving)}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
 
-        <div className="flex-1 min-w-0">
-          <div className="font-medium truncate text-white">{track.name}</div>
-          <div className="text-sm text-muted-foreground truncate">{track.artist}</div>
-        </div>
+function renderMobileTrack(track, handleRemoveTrack, handlePlayPreview, openInSpotify, isRemoving) {
+  return (
+    <div className="flex items-center gap-3 p-3 mb-2 border rounded-lg border-spotify-purple/20 hover:bg-spotify-purple/5">
+      <div className="relative flex-shrink-0 w-12 h-12">
+        {track.image_url ? (
+          <Image
+            src={track.image_url || "/placeholder.svg"}
+            alt={track.name}
+            fill
+            className="object-cover rounded-md"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-full h-full bg-muted rounded-md">
+            <Play className="w-6 h-6 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <h4 className="font-medium truncate">{track.name}</h4>
+        <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
+      </div>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="flex-shrink-0">
+            <MoreHorizontal className="w-5 h-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {track.preview_url && (
+            <DropdownMenuItem onClick={() => handlePlayPreview(track.preview_url)}>
+              <Play className="w-4 h-4 mr-2" />
+              Play Preview
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={() => openInSpotify(track.id)}>
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Open in Spotify
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => handleRemoveTrack(track.id, track.spotify_uri)}
+            disabled={isRemoving[track.id]}
+            className="text-red-500 focus:text-red-500"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            {isRemoving[track.id] ? "Removing..." : "Remove"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+}
+
+function renderDesktopTrack(track, handleRemoveTrack, handlePlayPreview, openInSpotify, isRemoving) {
+  return (
+    <div className="flex items-center gap-4 p-3 mb-2 border rounded-lg border-spotify-purple/20 hover:bg-spotify-purple/5">
+      <div className="relative flex-shrink-0 w-12 h-12">
+        {track.image_url ? (
+          <Image
+            src={track.image_url || "/placeholder.svg"}
+            alt={track.name}
+            fill
+            className="object-cover rounded-md"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-full h-full bg-muted rounded-md">
+            <Play className="w-6 h-6 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <h4 className="font-medium truncate">{track.name}</h4>
+        <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
+      </div>
+
+      {track.added_by_name && (
+        <div className="hidden text-sm text-muted-foreground md:block">Added by {track.added_by_name}</div>
+      )}
+
+      <div className="hidden text-sm text-muted-foreground md:block">
+        {new Date(track.added_at).toLocaleDateString()}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {track.preview_url && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handlePlayPreview(track.preview_url)}
+            className="hidden group-hover:flex"
+          >
+            <Play className="w-5 h-5" />
+          </Button>
+        )}
+
+        <Button variant="ghost" size="icon" onClick={() => openInSpotify(track.id)} className="hidden group-hover:flex">
+          <ExternalLink className="w-5 h-5" />
+        </Button>
 
         <Button
           variant="ghost"
           size="icon"
-          className="w-8 h-8 hover:bg-spotify-purple/10"
-          onClick={() => handleRemoveTrack(track.id)}
+          onClick={() => handleRemoveTrack(track.id, track.spotify_uri)}
           disabled={isRemoving[track.id]}
+          className="hidden text-red-500 group-hover:flex hover:text-red-600 hover:bg-red-100"
         >
-          <Trash className="w-4 h-4 text-spotify-purple-light" />
+          <Trash2 className="w-5 h-5" />
         </Button>
       </div>
-      <div className="text-xs text-muted-foreground mt-1 ml-13">{formatDuration(track.duration_ms)}</div>
-    </motion.div>
-  )
-
-  // Desktop view for tracks
-  const renderDesktopTrack = (track, index) => (
-    <motion.div
-      key={`${track.id}-${index}-desktop`}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 p-4 hover:bg-spotify-purple/10 transition-colors duration-200"
-    >
-      <div className="w-8 text-center text-muted-foreground">{index + 1}</div>
-
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="relative flex-shrink-0 w-10 h-10 group">
-          {track.image_url ? (
-            <Image
-              src={track.image_url || "/placeholder.svg"}
-              alt={track.album || track.name}
-              fill
-              className="object-cover rounded"
-            />
-          ) : (
-            <div className="flex items-center justify-center w-full h-full bg-spotify-purple-dark/30 rounded">
-              <Play className="w-4 h-4 text-spotify-purple-light" />
-            </div>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded">
-            <Play className="w-5 h-5 text-white" />
-          </div>
-        </div>
-
-        <div className="min-w-0">
-          <div className="font-medium truncate text-white">{track.name}</div>
-          <div className="text-sm text-muted-foreground truncate">{track.artist}</div>
-        </div>
-      </div>
-
-      <div className="text-sm text-muted-foreground">{formatDuration(track.duration_ms)}</div>
-
-      <div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="w-8 h-8 hover:bg-spotify-purple/10">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="border-spotify-purple/30 bg-background">
-            <DropdownMenuItem
-              onClick={() => handleRemoveTrack(track.id)}
-              disabled={isRemoving[track.id]}
-              className="hover:bg-spotify-purple/10 focus:bg-spotify-purple/10"
-            >
-              <Trash className="w-4 h-4 mr-2 text-spotify-purple-light" />
-              {isRemoving[track.id] ? "Removing..." : "Remove from playlist"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </motion.div>
-  )
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="border rounded-lg border-spotify-purple/20 bg-gradient-to-br from-background to-spotify-purple-dark/5"
-    >
-      {/* Desktop header - hidden on mobile */}
-      <div className="hidden md:grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 p-4 text-sm text-muted-foreground border-b border-spotify-purple/20">
-        <div className="w-8 text-center">#</div>
-        <div>Title</div>
-        <div className="flex items-center">
-          <Clock className="w-4 h-4" />
-        </div>
-        <div className="w-8"></div>
-      </div>
-
-      {/* Mobile view */}
-      <div className="md:hidden divide-y divide-spotify-purple/10">
-        {tracks.map((track, index) => renderMobileTrack(track, index))}
-      </div>
-
-      {/* Desktop view */}
-      <div className="hidden md:block divide-y divide-spotify-purple/10">
-        {tracks.map((track, index) => renderDesktopTrack(track, index))}
-      </div>
-    </motion.div>
+    </div>
   )
 }

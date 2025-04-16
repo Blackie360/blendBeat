@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/components/ui/use-toast"
-import { Music, Shuffle, Users, Loader2 } from "lucide-react"
+import { Music, Shuffle, Users, Loader2, ExternalLink } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createBlendPlaylistClient, joinBlendClient } from "@/lib/client-actions"
+import { getSpotifyLinks } from "@/lib/spotify-api"
 
 export default function BlendPage() {
   const [participantCount, setParticipantCount] = useState(3)
@@ -121,6 +122,57 @@ export default function BlendPage() {
           </CardContent>
         </Card>
       </div>
+    )
+  }
+
+  const BlendCard = ({ blend }) => {
+    const openInSpotify = (spotifyId) => {
+      if (spotifyId) {
+        const { url } = getSpotifyLinks(spotifyId)
+        window.open(url, "_blank")
+      }
+    }
+
+    return (
+      <Card key={blend.id} className="border-spotify-purple/20">
+        <CardContent className="p-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-12 w-12 border border-spotify-purple/30">
+              <AvatarImage src="/placeholder.svg" alt={blend.name} />
+              <AvatarFallback className="bg-spotify-purple/20">{blend.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-medium">{blend.name}</h3>
+              <p className="text-sm text-muted-foreground">
+                {blend.current_participants}/{blend.max_participants} participants
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {blend.spotify_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openInSpotify(blend.spotify_id)
+                }}
+                className="border-spotify-purple/30 hover:bg-spotify-purple/10"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Spotify
+              </Button>
+            )}
+            <Button
+              onClick={() => handleJoinBlend(blend.id, blend.playlist_id)}
+              disabled={blend.current_participants >= blend.max_participants}
+              className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
+            >
+              Join
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -242,29 +294,7 @@ export default function BlendPage() {
               ) : activeBlends.length > 0 ? (
                 <div className="space-y-4">
                   {activeBlends.map((blend) => (
-                    <Card key={blend.id} className="border-spotify-purple/20">
-                      <CardContent className="p-4 flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-12 w-12 border border-spotify-purple/30">
-                            <AvatarImage src="/placeholder.svg" alt={blend.name} />
-                            <AvatarFallback className="bg-spotify-purple/20">{blend.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="font-medium">{blend.name}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {blend.current_participants}/{blend.max_participants} participants
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          onClick={() => handleJoinBlend(blend.id, blend.playlist_id)}
-                          disabled={blend.current_participants >= blend.max_participants}
-                          className="bg-spotify-purple hover:bg-spotify-purple-dark text-white"
-                        >
-                          Join
-                        </Button>
-                      </CardContent>
-                    </Card>
+                    <BlendCard key={blend.id} blend={blend} />
                   ))}
                 </div>
               ) : (

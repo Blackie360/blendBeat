@@ -4,6 +4,12 @@ import { executeQuery } from "./db"
 import { getSession } from "./get-session"
 import { revalidatePath } from "next/cache"
 import { v4 as uuidv4 } from "uuid"
+import {
+  getUserProfile,
+  createSpotifyPlaylist,
+  addTracksToSpotifyPlaylist,
+  removeTracksFromSpotifyPlaylist,
+} from "./spotify"
 
 // User actions
 export async function createOrUpdateUser(userData: {
@@ -181,8 +187,10 @@ export async function saveTrack(trackData: {
   }
 }
 
-export async function addTrackToPlaylist(playlistId: string, trackId: string, userId: string) {
+// Update the addTrackToPlaylist function to sync with Spotify
+export async function addTrackToPlaylist(playlistId: string, trackId: string, userId: string, trackUri?: string) {
   try {
+    // Add track to our database
     const query = `
       INSERT INTO playlist_tracks (playlist_id, track_id, added_by)
       VALUES ($1, $2, $3)
@@ -191,6 +199,23 @@ export async function addTrackToPlaylist(playlistId: string, trackId: string, us
     `
 
     const result = await executeQuery(query, [playlistId, trackId, userId])
+
+    // Get the playlist to check if it has a Spotify ID
+    const playlist = await getPlaylistById(playlistId)
+
+    // If the playlist has a Spotify ID and we have a track URI, add it to Spotify
+    if (playlist?.spotify_id && trackUri) {
+      try {
+        const session = await getSession()
+        if (session?.accessToken) {
+          await addTracksToSpotifyPlaylist(session.accessToken, playlist.spotify_id, trackUri)
+        }
+      } catch (spotifyError) {
+        console.error("Error adding track to Spotify playlist:", spotifyError)
+        // Continue even if Spotify sync fails
+      }
+    }
+
     revalidatePath(`/playlist/${playlistId}`)
     return result[0]
   } catch (error) {
@@ -199,8 +224,10 @@ export async function addTrackToPlaylist(playlistId: string, trackId: string, us
   }
 }
 
-export async function removeTrackFromPlaylist(playlistId: string, trackId: string) {
+// Update the removeTrackFromPlaylist function to sync with Spotify
+export async function removeTrackFromPlaylist(playlistId: string, trackId: string, trackUri?: string) {
   try {
+    // Remove track from our database
     const query = `
       DELETE FROM playlist_tracks
       WHERE playlist_id = $1 AND track_id = $2
@@ -208,6 +235,23 @@ export async function removeTrackFromPlaylist(playlistId: string, trackId: strin
     `
 
     const result = await executeQuery(query, [playlistId, trackId])
+
+    // Get the playlist to check if it has a Spotify ID
+    const playlist = await getPlaylistById(playlistId)
+
+    // If the playlist has a Spotify ID and we have a track URI, remove it from Spotify
+    if (playlist?.spotify_id && trackUri) {
+      try {
+        const session = await getSession()
+        if (session?.accessToken) {
+          await removeTracksFromSpotifyPlaylist(session.accessToken, playlist.spotify_id, trackUri)
+        }
+      } catch (spotifyError) {
+        console.error("Error removing track from Spotify playlist:", spotifyError)
+        // Continue even if Spotify sync fails
+      }
+    }
+
     revalidatePath(`/playlist/${playlistId}`)
     return result[0]
   } catch (error) {
@@ -309,64 +353,122 @@ export async function getPlaylistCollaborators(playlistId: string) {
 }
 
 // Blend actions
+// Update the createBlendPlaylist function to create a Spotify playlist
 export async function createBlendPlaylist(name: string, maxParticipants: number, userId: string) {
   try {
     // Start a transaction
     await executeQuery("BEGIN")
 
-    // Create a new playlist
-    const playlistId = uuidv4()
-    const playlistQuery = `
-      INSERT INTO playlists (
-        id, name, description, owner_id, is_collaborative, is_public, updated_at
-      )
-      VALUES (
-        $1, $2, $3, $4, true, true, CURRENT_TIMESTAMP
-      )
-      RETURNING *
-    `
+    try {
+      // Get the user's session to access Spotify
+      const session = await getSession()
+      let spotifyPlaylistId = null
+      let playlistId = null
 
-    const description = `A collaborative blend playlist with up to ${maxParticipants} participants`
-    const playlist = await executeQuery(playlistQuery, [playlistId, `${name} (Blend)`, description, userId])
+      // Create a Spotify playlist if the user is authenticated
+      if (session?.accessToken && session?.user?.id) {
+        try {
+          // Get the user's Spotify ID
+          const userProfile = await getUserProfile(session.accessToken)
 
-    // Create a blend record
-    const blendQuery = `
-      INSERT INTO blends (
-        name, playlist_id, max_participants, is_active, 
-        created_at, expires_at
-      )
-      VALUES (
-        $1, $2, $3, true, CURRENT_TIMESTAMP, 
-        CURRENT_TIMESTAMP + INTERVAL '30 days'
-      )
-      RETURNING *
-    `
+          // Create a playlist in Spotify
+          const description = `A collaborative blend playlist with up to ${maxParticipants} participants`
+          const spotifyPlaylist = await createSpotifyPlaylist(
+            session.accessToken,
+            userProfile.id,
+            `${name} (Blend)`,
+            description,
+            true, // collaborative
+          )
 
-    const blend = await executeQuery(blendQuery, [name, playlistId, maxParticipants])
+          spotifyPlaylistId = spotifyPlaylist.id
 
-    // Add the creator as a participant
-    const participantQuery = `
-      INSERT INTO blend_participants (blend_id, user_id)
-      VALUES ($1, $2)
-      RETURNING *
-    `
+          // Create a playlist in our database linked to the Spotify playlist
+          const playlistQuery = `
+            INSERT INTO playlists (
+              id, name, description, owner_id, is_collaborative, is_public, spotify_id, updated_at
+            )
+            VALUES (
+              uuid_generate_v4(), $1, $2, $3, true, true, $4, CURRENT_TIMESTAMP
+            )
+            RETURNING *
+          `
 
-    await executeQuery(participantQuery, [blend[0].id, userId])
+          const playlist = await executeQuery(playlistQuery, [
+            `${name} (Blend)`,
+            description,
+            userId,
+            spotifyPlaylistId,
+          ])
 
-    // Commit the transaction
-    await executeQuery("COMMIT")
+          playlistId = playlist[0].id
+        } catch (spotifyError) {
+          console.error("Error creating Spotify playlist:", spotifyError)
+          // Continue without Spotify integration if it fails
+        }
+      }
 
-    revalidatePath("/dashboard")
-    revalidatePath("/blend")
+      // If Spotify integration failed or wasn't attempted, create a local playlist
+      if (!playlistId) {
+        const playlistQuery = `
+          INSERT INTO playlists (
+            id, name, description, owner_id, is_collaborative, is_public, updated_at
+          )
+          VALUES (
+            uuid_generate_v4(), $1, $2, $3, true, true, CURRENT_TIMESTAMP
+          )
+          RETURNING *
+        `
 
-    return {
-      playlistId: playlist[0].id,
-      blendId: blend[0].id,
+        const description = `A collaborative blend playlist with up to ${maxParticipants} participants`
+        const playlist = await executeQuery(playlistQuery, [`${name} (Blend)`, description, userId])
+
+        playlistId = playlist[0].id
+      }
+
+      // Create a blend record
+      const blendQuery = `
+        INSERT INTO blends (
+          name, playlist_id, max_participants, is_active, 
+          created_at, expires_at
+        )
+        VALUES (
+          $1, $2, $3, true, CURRENT_TIMESTAMP, 
+          CURRENT_TIMESTAMP + INTERVAL '30 days'
+        )
+        RETURNING *
+      `
+
+      const blend = await executeQuery(blendQuery, [name, playlistId, maxParticipants])
+
+      // Add the creator as a participant
+      const participantQuery = `
+        INSERT INTO blend_participants (blend_id, user_id)
+        VALUES ($1, $2)
+        RETURNING *
+      `
+
+      await executeQuery(participantQuery, [blend[0].id, userId])
+
+      // Commit the transaction
+      await executeQuery("COMMIT")
+
+      revalidatePath("/dashboard")
+      revalidatePath("/blend")
+
+      return {
+        playlistId: playlistId,
+        blendId: blend[0].id,
+        spotifyPlaylistId: spotifyPlaylistId,
+      }
+    } catch (error) {
+      // Rollback the transaction on error
+      await executeQuery("ROLLBACK")
+      console.error("Error creating blend playlist:", error)
+      throw error
     }
   } catch (error) {
-    // Rollback the transaction on error
-    await executeQuery("ROLLBACK")
-    console.error("Error creating blend playlist:", error)
+    console.error("Error in createBlendPlaylist:", error)
     throw error
   }
 }
