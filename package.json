@@ -72,8 +72,8 @@
     "@react-three/drei": "latest",
     "uuid": "latest",
     "framer-motion": "latest",
-    "@neondatabase/serverless": "latest",
     "react-icons": "latest",
+    "@neondatabase/serverless": "latest",
     "qrcode.react": "latest",
     "html2canvas": "latest"
   },

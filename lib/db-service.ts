@@ -350,15 +350,28 @@ export async function getCurrentUser(): Promise<User | null> {
     // Check if user exists in our database
     let user = await getUserById(session.user.id)
 
-    // If not, create the user
+    // If not, create the user with all available data
     if (!user) {
       user = await createOrUpdateUser({
         id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
+        email: session.user.email || `user-${session.user.id}@example.com`, // Fallback email
+        name: session.user.name || "Spotify User",
         image: session.user.image,
         spotify_id: session.user.id,
       })
+
+      console.log("Created missing user during getCurrentUser:", user.email)
+    } else {
+      // Update user data to ensure it's current
+      user = await createOrUpdateUser({
+        id: session.user.id,
+        email: session.user.email || user.email,
+        name: session.user.name || user.name,
+        image: session.user.image || user.image,
+        spotify_id: session.user.id,
+      })
+
+      console.log("Updated user data during getCurrentUser:", user.email)
     }
 
     return user

@@ -51,31 +51,42 @@ export const authOptions: NextAuthOptions = {
           SELECT * FROM users WHERE id = ${user.id || profile?.id}
         `
 
+        const userData = {
+          id: user.id || profile?.id,
+          email: user.email,
+          name: user.name || profile?.display_name || "Spotify User",
+          image: user.image || profile?.images?.[0]?.url,
+          spotify_id: profile?.id,
+          created_at: "CURRENT_TIMESTAMP",
+          updated_at: "CURRENT_TIMESTAMP",
+        }
+
         if (existingUser.rows.length === 0) {
           // Create new user
           await sql`
             INSERT INTO users (id, email, name, image, spotify_id, created_at, updated_at)
             VALUES (
-              ${user.id || profile?.id},
-              ${user.email},
-              ${user.name},
-              ${user.image},
-              ${profile?.id},
+              ${userData.id},
+              ${userData.email},
+              ${userData.name},
+              ${userData.image},
+              ${userData.spotify_id},
               CURRENT_TIMESTAMP,
               CURRENT_TIMESTAMP
             )
           `
           console.log("Created new user:", user.email)
         } else {
-          // Update existing user
+          // Update existing user with all available data
           await sql`
             UPDATE users
             SET 
-              email = ${user.email},
-              name = ${user.name},
-              image = ${user.image},
+              email = ${userData.email},
+              name = ${userData.name},
+              image = ${userData.image},
+              spotify_id = ${userData.spotify_id},
               updated_at = CURRENT_TIMESTAMP
-            WHERE id = ${user.id || profile?.id}
+            WHERE id = ${userData.id}
           `
           console.log("Updated existing user:", user.email)
         }
