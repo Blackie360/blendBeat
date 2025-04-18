@@ -15,7 +15,7 @@ export function middleware(request: NextRequest) {
   // Redirect logic
   if (!isPublicPath && !hasSessionCookie) {
     // Redirect to login if accessing protected route without session
-    return NextResponse.redirect(new URL("/login", request.url))
+    return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(path)}`, request.url))
   }
 
   if (path === "/login" && hasSessionCookie) {

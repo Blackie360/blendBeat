@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, Library, Plus, Search, Shuffle } from "lucide-react"
+import { Home, Library, Plus, Search } from "lucide-react"
 
 export function MobileBottomNav() {
   const pathname = usePathname()
@@ -32,12 +32,6 @@ export function MobileBottomNav() {
       icon: Library,
       href: "/library",
       active: pathname === "/library",
-    },
-    {
-      label: "Blend",
-      icon: Shuffle,
-      href: "/blend",
-      active: pathname === "/blend",
     },
   ]
 

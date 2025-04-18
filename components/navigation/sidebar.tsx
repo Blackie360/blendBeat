@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Library, Music, Users, Settings, LogOut } from "lucide-react"
+import { Home, Library, Music, Settings, LogOut } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { cn } from "@/lib/utils"
 
@@ -18,13 +18,8 @@ const navItems = [
     icon: Library,
   },
   {
-    name: "Blends",
-    href: "/blend",
-    icon: Users,
-  },
-  {
-    name: "Songs",
-    href: "/songs",
+    name: "Search",
+    href: "/search",
     icon: Music,
   },
   {
@@ -41,7 +36,7 @@ export function Sidebar() {
     <div className="hidden md:flex flex-col w-64 bg-background border-r border-border h-screen">
       <div className="p-6">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-2xl font-bold">Spotify Blend</span>
+          <span className="text-2xl font-bold">Spotify Playlist Builder</span>
         </Link>
       </div>
 

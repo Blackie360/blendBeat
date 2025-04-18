@@ -2,25 +2,17 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/components/ui/use-toast"
-import { LinkIcon, MoreHorizontal, Music, Share, Users, ExternalLink } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Music, BarChart2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { getSpotifyLinks } from "@/lib/spotify-api"
+import { PlaylistShareMenu } from "@/components/sharing/playlist-share-menu"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { SyncBadge } from "@/components/sync/sync-badge"
+import { SyncButton } from "@/components/sync/sync-button"
 
-export function PlaylistHeader({ playlist }) {
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
+export function PlaylistHeader({ playlist, isOwner = false }) {
   const [email, setEmail] = useState("")
   const [isInviting, setIsInviting] = useState(false)
   const { toast } = useToast()
@@ -55,11 +47,11 @@ export function PlaylistHeader({ playlist }) {
       })
 
       setEmail("")
-      setIsInviteDialogOpen(false)
 
       // Refresh the page to update the collaborators list
       router.refresh()
     } catch (error) {
+      console.error("Add collaborator error:", error)
       toast({
         title: "Failed to send invitation",
         description: error.message,
@@ -118,6 +110,11 @@ export function PlaylistHeader({ playlist }) {
               </div>
             )}
             <div className="text-sm text-muted-foreground">Playlist</div>
+
+            {/* Add sync status badge */}
+            {playlist.sync_status && (
+              <SyncBadge playlistId={playlist.id} lastSynced={playlist.last_synced} syncStatus={playlist.sync_status} />
+            )}
           </div>
 
           <h1 className="mt-2 text-2xl md:text-4xl font-bold purple-gradient-text">{playlist.name}</h1>
@@ -127,104 +124,39 @@ export function PlaylistHeader({ playlist }) {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-6">
-          <Button className="bg-spotify-purple hover:bg-spotify-purple-dark text-white flex-1 sm:flex-none">
-            Play
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={() => setIsInviteDialogOpen(true)}
-            className="border-spotify-purple/30 hover:bg-spotify-purple/10 flex-1 sm:flex-none"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            <span className="hidden xs:inline">Invite</span>
-            <span className="xs:hidden">+</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={handleCopyLink}
-            className="border-spotify-purple/30 hover:bg-spotify-purple/10 flex-1 sm:flex-none"
-          >
-            <LinkIcon className="w-4 h-4 mr-2" />
-            <span className="hidden xs:inline">Copy Link</span>
-            <span className="xs:hidden">Link</span>
-          </Button>
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          {/* Add the PlaylistShareMenu component */}
+          <PlaylistShareMenu
+            playlist={{
+              id: playlist.id,
+              name: playlist.name,
+              description: playlist.description,
+              image_url: playlist.image_url,
+              track_count: playlist.tracks?.length || 0,
+              owner_name: playlist.owner_name || "Spotify User",
+            }}
+          />
 
           {playlist.spotify_id && (
-            <Button
-              variant="outline"
-              onClick={openInSpotify}
-              className="border-spotify-purple/30 hover:bg-spotify-purple/10 flex-1 sm:flex-none"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">Open in Spotify</span>
-              <span className="xs:hidden">Spotify</span>
+            <Button variant="outline" size="sm" onClick={openInSpotify}>
+              Open in Spotify
             </Button>
           )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="hover:bg-spotify-purple/10">
-                <MoreHorizontal className="w-5 h-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleCopyLink}>
-                <Share className="w-4 h-4 mr-2" />
-                Share
-              </DropdownMenuItem>
-              {playlist.spotify_id && (
-                <DropdownMenuItem onClick={openInSpotify}>
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Open in Spotify
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Add sync button for playlist owners */}
+          {isOwner && <SyncButton playlistId={playlist.id} />}
+
+          {/* Add analytics button for playlist owners */}
+          {isOwner && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/playlist/${playlist.id}/analytics`}>
+                <BarChart2 className="w-4 h-4 mr-2" />
+                Analytics
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
-
-      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px] w-[95vw] border-spotify-purple/30 bg-background">
-          <DialogHeader>
-            <DialogTitle>Invite to Playlist</DialogTitle>
-            <DialogDescription>Invite someone to collaborate on "{playlist.name}"</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="border-spotify-purple/30 focus-visible:ring-spotify-purple"
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsInviteDialogOpen(false)}
-              className="sm:w-auto w-full border-spotify-purple/30 hover:bg-spotify-purple/10"
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-spotify-purple hover:bg-spotify-purple-dark text-white sm:w-auto w-full"
-              onClick={handleInvite}
-              disabled={isInviting}
-            >
-              {isInviting ? "Sending..." : "Send Invitation"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

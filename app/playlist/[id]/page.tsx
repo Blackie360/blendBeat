@@ -98,10 +98,13 @@ async function PlaylistContent({ params }) {
       name: playlist.name,
       description: playlist.description,
       image_url: playlist.images[0]?.url,
-      owner_id: user.id,
+      owner_id: playlist.owner.id,
       is_collaborative: playlist.collaborative,
       is_public: playlist.public,
     }
+
+    // Check if the current user is the owner of the playlist
+    const isOwner = user.id === playlistData.owner_id
 
     return (
       <>
@@ -109,7 +112,7 @@ async function PlaylistContent({ params }) {
           <BackButton />
         </div>
 
-        <PlaylistHeader playlist={playlistData} />
+        <PlaylistHeader playlist={playlistData} isOwner={isOwner} />
 
         <div className="grid grid-cols-1 gap-6 mt-6 md:mt-8 lg:grid-cols-3">
           <div className="lg:col-span-2">

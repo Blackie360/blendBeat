@@ -7,7 +7,6 @@ import { useToast } from "@/components/ui/use-toast"
 import { Search, Plus, Loader2, ExternalLink } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { addTrackToPlaylistClient } from "@/lib/client-actions"
 import { getSpotifyTrackLinks } from "@/lib/spotify-api"
 
 // Define the SpotifyTrack type
@@ -65,11 +64,35 @@ export function SearchTracks({ playlistId }) {
     setIsAdding((prev) => ({ ...prev, [track.id]: true }))
 
     try {
-      await addTrackToPlaylistClient(playlistId, track)
+      // Use the sync API endpoint
+      const response = await fetch(`/api/playlists/${playlistId}/tracks/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          trackUri: track.uri,
+          track: {
+            id: track.id,
+            name: track.name,
+            artist: track.artists.map((a) => a.name).join(", "),
+            album: track.album?.name,
+            duration_ms: track.duration_ms,
+            spotify_uri: track.uri,
+            image_url: track.album?.images?.[0]?.url,
+            preview_url: track.preview_url,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to add track")
+      }
 
       toast({
         title: "Track added",
-        description: `"${track.name}" has been added to the playlist`,
+        description: `"${track.name}" has been added to the playlist and synced with Spotify`,
       })
 
       // Remove the track from results

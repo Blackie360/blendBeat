@@ -4,8 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
-import { MoreHorizontal, Play, Trash2, ExternalLink } from "lucide-react"
-import { removeTrackFromPlaylistClient } from "@/lib/client-actions"
+import { MoreHorizontal, Play, Trash2, ExternalLink, Loader2 } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useMobile } from "@/hooks/use-mobile"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -20,12 +19,27 @@ export function TrackList({ tracks, playlistId }) {
     setIsRemoving((prev) => ({ ...prev, [trackId]: true }))
 
     try {
-      await removeTrackFromPlaylistClient(playlistId, trackId, trackUri)
+      // Use the sync API endpoint
+      const response = await fetch(`/api/playlists/${playlistId}/tracks/sync`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ trackUri }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to remove track")
+      }
 
       toast({
         title: "Track removed",
-        description: "The track has been removed from the playlist",
+        description: "The track has been removed from the playlist and synced with Spotify",
       })
+
+      // Remove the track from the local state
+      // In a real app, you would use a state management solution or refresh the page
     } catch (error) {
       toast({
         title: "Failed to remove track",
@@ -146,8 +160,17 @@ function renderMobileTrack(track, handleRemoveTrack, handlePlayPreview, openInSp
             disabled={isRemoving[track.id]}
             className="text-red-500 focus:text-red-500"
           >
-            <Trash2 className="w-4 h-4 mr-2" />
-            {isRemoving[track.id] ? "Removing..." : "Remove"}
+            {isRemoving[track.id] ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Removing...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Remove
+              </>
+            )}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -223,7 +246,7 @@ function renderDesktopTrack(track, handleRemoveTrack, handlePlayPreview, openInS
           disabled={isRemoving[track.id]}
           className="hidden text-red-500 group-hover:flex hover:text-red-600 hover:bg-red-100"
         >
-          <Trash2 className="w-5 h-5" />
+          {isRemoving[track.id] ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
         </Button>
       </div>
     </div>

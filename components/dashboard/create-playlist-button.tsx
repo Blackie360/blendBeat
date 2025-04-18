@@ -13,15 +13,16 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Plus } from "lucide-react"
+import { Plus, Loader2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { v4 as uuidv4 } from "uuid"
+import { Switch } from "@/components/ui/switch"
 
 export function CreatePlaylistButton() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [isPublic, setIsPublic] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
   const { data: session } = useSession()
@@ -43,22 +44,16 @@ export function CreatePlaylistButton() {
         throw new Error("User ID not found")
       }
 
-      // Create a unique ID for the playlist
-      const playlistId = uuidv4()
-
-      // Create the playlist in the database
-      const response = await fetch("/api/playlists", {
+      // Create the playlist in Spotify and sync to our database
+      const response = await fetch("/api/playlists/sync", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: playlistId,
           name,
           description,
-          owner_id: session.user.id,
-          is_collaborative: false,
-          is_public: true,
+          isPublic,
         }),
       })
 
@@ -67,9 +62,11 @@ export function CreatePlaylistButton() {
         throw new Error(error.message || "Failed to create playlist")
       }
 
+      const result = await response.json()
+
       toast({
         title: "Playlist created!",
-        description: "Your new playlist has been created.",
+        description: "Your new playlist has been created and synced with Spotify.",
       })
 
       // Refresh the page to show the new playlist
@@ -99,7 +96,7 @@ export function CreatePlaylistButton() {
         <DialogContent className="border-spotify-purple/30 bg-gradient-to-b from-background to-muted sm:max-w-[425px] w-[95vw]">
           <DialogHeader>
             <DialogTitle className="purple-gradient-text">Create Playlist</DialogTitle>
-            <DialogDescription>Create a new playlist with your own custom name and description.</DialogDescription>
+            <DialogDescription>Create a new playlist that will be synced with your Spotify account.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-2 md:gap-4">
@@ -119,13 +116,31 @@ export function CreatePlaylistButton() {
                 className="md:col-span-3"
               />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-2 md:gap-4">
+              <Label htmlFor="isPublic" className="md:text-right">
+                Public
+              </Label>
+              <div className="md:col-span-3 flex items-center">
+                <Switch id="isPublic" checked={isPublic} onCheckedChange={setIsPublic} />
+                <Label htmlFor="isPublic" className="ml-2 text-sm text-muted-foreground">
+                  Make this playlist visible to others
+                </Label>
+              </div>
+            </div>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="sm:w-auto w-full">
               Cancel
             </Button>
             <Button onClick={handleCreate} disabled={isCreating} className="purple-glow sm:w-auto w-full">
-              {isCreating ? "Creating..." : "Create"}
+              {isCreating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
