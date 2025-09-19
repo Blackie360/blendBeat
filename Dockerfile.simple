@@ -1,0 +1,23 @@
+FROM golang:1.21-alpine
+
+# Install libvips and build dependencies
+RUN apk add --no-cache \
+    vips-dev \
+    pkgconfig \
+    gcc \
+    musl-dev \
+    ca-certificates
+
+WORKDIR /app
+
+# Copy all files
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=1 go build -o blendBeat ./cmd/server
+
+# Expose port
+EXPOSE 8080
+
+# Run the application
+CMD ["./blendBeat"]
