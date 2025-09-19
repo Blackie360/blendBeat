@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Go
+go.mod
+go.sum
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+blendBeat
+blendBeat.exe
+*.exe
+
+# Test files
+*_test.go
+test/
