@@ -73,7 +73,7 @@ func (p *ImageProcessor) GetImageInfo(input []byte) (*bimg.ImageMetadata, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get image metadata: %w", err)
 	}
-	return metadata, nil
+	return &metadata, nil
 }
 
 // ValidateImage checks if the input is a valid image

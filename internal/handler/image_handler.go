@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
