@@ -1,0 +1,11 @@
+nohup: ignoring input
+2025/09/19 23:07:42 Starting Fast Image Resizer & Optimizer on port 8080
+2025/09/19 23:07:42 Health check: http://localhost:8080/health
+2025/09/19 23:07:42 API documentation: http://localhost:8080/
+[GIN] 2025/09/19 - 23:07:55 | 200 |     102.876µs |             ::1 | GET      "/health"
+[GIN] 2025/09/19 - 23:08:05 | 200 |     216.857µs |             ::1 | GET      "/"
+[GIN] 2025/09/19 - 23:08:23 | 200 |  1.887348009s |             ::1 | GET      "/resize?url=https://picsum.photos/800/600&width=300&height=200&quality=85&format=jpeg"
+[GIN] 2025/09/19 - 23:08:48 | 500 |     508.584µs |             ::1 | POST     "/resize"
+[GIN] 2025/09/19 - 23:09:10 | 200 |   10.801518ms |             ::1 | POST     "/resize"
+[GIN] 2025/09/19 - 23:09:31 | 200 |  811.479753ms |             ::1 | GET      "/resize?url=https://picsum.photos/600/400&width=200&height=150&format=webp"
+[GIN] 2025/09/19 - 23:10:11 | 200 |      95.927µs |             ::1 | GET      "/health"
